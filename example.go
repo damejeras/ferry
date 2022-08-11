@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"time"
 )
 
 type helloWorldRequest struct{}
@@ -22,12 +23,39 @@ type helloNameResponse struct {
 
 type greetingService struct{}
 
+type streamGreetingsRequest struct {
+	Name string `query:"name"`
+}
+
+type greeting struct {
+	Message string
+}
+
 func (s *greetingService) HelloWorld(_ context.Context, _ *helloWorldRequest) (*helloWorldResponse, error) {
 	return &helloWorldResponse{Message: "Hello World"}, nil
 }
 
 func (s *greetingService) HelloName(_ context.Context, request *helloNameRequest) (*helloNameResponse, error) {
 	return &helloNameResponse{Message: "Hello " + request.Name}, nil
+}
+
+func (s *greetingService) StreamGreetings(ctx context.Context, r *streamGreetingsRequest) (<-chan *greeting, error) {
+	stream := make(chan *greeting)
+
+	go func() {
+		ticker := time.Tick(time.Second)
+		for {
+			select {
+			case <-ctx.Done():
+				close(stream)
+				return
+			case <-ticker:
+				stream <- &greeting{Message: "hello " + r.Name}
+			}
+		}
+	}()
+
+	return stream, nil
 }
 
 func main() {
@@ -63,13 +91,18 @@ func main() {
 	Content-Type: application/json
 	{}
 	*/
-	RegisterHandler(mux, "Greeting.HelloWorld", greetingService.HelloWorld)
+	RegisterProcedure(mux, "Greeting.HelloWorld", greetingService.HelloWorld)
 	/**
 	POST: http://localhost:7777/api/v1/Greeting.HelloName
 	Content-Type: application/json
 	{"name": "Joe"}
 	*/
-	RegisterHandler(mux, "Greeting.HelloName", greetingService.HelloName)
+	RegisterProcedure(mux, "Greeting.HelloName", greetingService.HelloName)
+	/**
+	GET: http://localhost:7777/api/v1/Greeting.Stream?name=Joe
+	Content-Type: application/json
+	*/
+	RegisterStream(mux, "Greeting.Stream", greetingService.StreamGreetings)
 
 	if err := http.ListenAndServe(":7777", mux); err != nil {
 		log.Fatal(err)
