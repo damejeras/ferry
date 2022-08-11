@@ -21,8 +21,6 @@ type helloNameResponse struct {
 	Message string
 }
 
-type greetingService struct{}
-
 type streamGreetingsRequest struct {
 	Name string `query:"name"`
 }
@@ -30,6 +28,8 @@ type streamGreetingsRequest struct {
 type greeting struct {
 	Message string
 }
+
+type greetingService struct{}
 
 func (s *greetingService) HelloWorld(_ context.Context, _ *helloWorldRequest) (*helloWorldResponse, error) {
 	return &helloWorldResponse{Message: "Hello World"}, nil
@@ -100,7 +100,6 @@ func main() {
 	RegisterProcedure(mux, "Greeting.HelloName", greetingService.HelloName)
 	/**
 	GET: http://localhost:7777/api/v1/Greeting.Stream?name=Joe
-	Content-Type: application/json
 	*/
 	RegisterStream(mux, "Greeting.Stream", greetingService.StreamGreetings)
 
