@@ -6,28 +6,28 @@ import (
 	"net/http"
 )
 
-type HelloWorldRequest struct{}
+type helloWorldRequest struct{}
 
-type HelloWorldResponse struct {
+type helloWorldResponse struct {
 	Message string
 }
 
-type HelloNameRequest struct {
+type helloNameRequest struct {
 	Name string
 }
 
-type HelloNameResponse struct {
+type helloNameResponse struct {
 	Message string
 }
 
-type GreetingService struct{}
+type greetingService struct{}
 
-func (s *GreetingService) HelloWorld(_ context.Context, _ *HelloWorldRequest) (*HelloWorldResponse, error) {
-	return &HelloWorldResponse{Message: "Hello World"}, nil
+func (s *greetingService) HelloWorld(_ context.Context, _ *helloWorldRequest) (*helloWorldResponse, error) {
+	return &helloWorldResponse{Message: "Hello World"}, nil
 }
 
-func (s *GreetingService) HelloName(_ context.Context, request *HelloNameRequest) (*HelloNameResponse, error) {
-	return &HelloNameResponse{Message: "Hello " + request.Name}, nil
+func (s *greetingService) HelloName(_ context.Context, request *helloNameRequest) (*helloNameResponse, error) {
+	return &helloNameResponse{Message: "Hello " + request.Name}, nil
 }
 
 func main() {
@@ -56,7 +56,7 @@ func main() {
 			}
 		}),
 	)
-	greetingService := new(GreetingService)
+	greetingService := new(greetingService)
 
 	/**
 	POST: http://localhost:7777/api/v1/Greeting.HelloWorld
