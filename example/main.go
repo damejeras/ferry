@@ -5,8 +5,8 @@ import (
 	"log"
 	"net/http"
 
-	"ferry"
-	"ferry/example/internal/greet"
+	"github.com/damejeras/ferry"
+	"github.com/damejeras/ferry/example/internal/greet"
 )
 
 // @title           ferry example API

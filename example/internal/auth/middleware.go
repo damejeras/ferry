@@ -3,7 +3,7 @@ package auth
 import (
 	"net/http"
 
-	"ferry"
+	"github.com/damejeras/ferry"
 )
 
 func Middleware(next http.Handler) http.Handler {

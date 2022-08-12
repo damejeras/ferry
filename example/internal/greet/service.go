@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"ferry/example/api/v1"
+	"github.com/damejeras/ferry/example/api/v1"
 )
 
 func NewService() v1.GreetService {

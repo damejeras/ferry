@@ -2,8 +2,6 @@ package v1
 
 import (
 	"context"
-
-	_ "ferry"
 )
 
 type GreetService interface {
