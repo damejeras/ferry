@@ -1,29 +1,15 @@
 package ferry
 
-import (
-	"strings"
-)
-
-type Option func(mux *ServeMux)
+type Option func(mux *mux)
 
 func WithErrorHandler(handler ErrorHandler) Option {
-	return func(s *ServeMux) {
+	return func(s *mux) {
 		s.errHandler = handler
 	}
 }
 
-func WithPathPrefix(prefix string) Option {
-	trimmedPrefix := strings.Trim(prefix, "/")
-
-	return func(s *ServeMux) {
-		s.pathFn = func(route string) string {
-			return "/" + trimmedPrefix + "/" + route
-		}
-	}
-}
-
 func WithMiddleware(mw Middleware) Option {
-	return func(s *ServeMux) {
+	return func(s *mux) {
 		s.middleware = append(s.middleware, mw)
 	}
 }

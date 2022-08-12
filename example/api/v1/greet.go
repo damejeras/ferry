@@ -13,15 +13,15 @@ type GreetService interface {
 type HelloWorldRequest struct{}
 
 type HelloWorldResponse struct {
-	Message string
+	Message string `json:"message"`
 }
 
 type HelloNameRequest struct {
-	Name string
+	Name string `json:"name"`
 }
 
 type HelloNameResponse struct {
-	Message string
+	Message string `json:"message"`
 }
 
 type StreamGreetingsRequest struct {

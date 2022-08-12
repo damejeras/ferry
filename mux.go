@@ -1,23 +1,30 @@
 package ferry
 
 import (
-	"bytes"
-	"context"
-	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
+
+	"github.com/swaggest/openapi-go/openapi3"
 )
 
-func NewServeMux(options ...Option) *ServeMux {
-	mux := &ServeMux{
-		errHandler: DefaultErrorHandler,
-		middleware: make([]Middleware, 0),
-		pathFn: func(route string) string {
-			return "/" + route
-		},
-		procedures: make(map[string]http.Handler),
-		streams:    make(map[string]http.Handler),
+type ServeMux interface {
+	Handle(path string, h Handler)
+	OpenAPISpec(modification func(*openapi3.Spec)) ([]byte, error)
+
+	http.Handler
+}
+
+func NewServeMux(options ...Option) ServeMux {
+	reflector := openapi3.Reflector{}
+	reflector.Spec = &openapi3.Spec{Openapi: "3.0.3"}
+	reflector.Spec.Info.
+		WithDescription("Put something here")
+
+	mux := &mux{
+		apiReflector: reflector,
+		errHandler:   DefaultErrorHandler,
+		middleware:   make([]Middleware, 0),
+		procedures:   make(map[string]http.Handler),
+		streams:      make(map[string]http.Handler),
 	}
 
 	mux.notFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -36,22 +43,47 @@ func NewServeMux(options ...Option) *ServeMux {
 	return mux
 }
 
-type ServeMux struct {
+type mux struct {
+	apiReflector    openapi3.Reflector
 	errHandler      ErrorHandler
 	middleware      []Middleware
 	notFoundHandler http.Handler
-	pathFn          func(route string) string
 	procedures      map[string]http.Handler
 	streams         map[string]http.Handler
 }
 
-func (mux *ServeMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (m *mux) Handle(path string, h Handler) {
+	handle, err := h.build(path, m)
+	if err != nil {
+		// error could come from openapi reflector when reading request and response objects
+		panic(err)
+	}
+
+	switch h.(type) {
+	case procedureBuilder:
+		m.procedures[path] = chainMiddleware(handle, m.middleware...)
+	case streamBuilder:
+		m.streams[path] = chainMiddleware(handle, m.middleware...)
+	default:
+		return
+	}
+}
+
+func (m *mux) OpenAPISpec(modification func(spec *openapi3.Spec)) ([]byte, error) {
+	if modification != nil {
+		modification(m.apiReflector.Spec)
+	}
+
+	return m.apiReflector.Spec.MarshalJSON()
+}
+
+func (m *mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var handler http.Handler
 	switch r.Method {
 	case http.MethodPost:
-		handler = mux.procedures[r.URL.Path]
+		handler = m.procedures[r.URL.Path]
 	case http.MethodGet:
-		handler = mux.streams[r.URL.Path]
+		handler = m.streams[r.URL.Path]
 	}
 
 	if handler != nil {
@@ -59,79 +91,5 @@ func (mux *ServeMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mux.notFoundHandler.ServeHTTP(w, r)
-}
-
-func RegisterProcedure[Request any, Response any](mux *ServeMux, name string, procedure func(ctx context.Context, r *Request) (*Response, error)) {
-	mux.procedures[mux.pathFn(name)] = chainMiddleware(procedureHandler(mux, procedure), mux.middleware...)
-}
-
-func RegisterStream[Request any, Message any](mux *ServeMux, name string, stream func(ctx context.Context, r *Request) (<-chan *Message, error)) {
-	mux.streams[mux.pathFn(name)] = chainMiddleware(streamHandler(mux, stream), mux.middleware...)
-}
-
-func procedureHandler[Request any, Response any](mux *ServeMux, procedure func(ctx context.Context, r *Request) (*Response, error)) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var requestValue Request
-		if err := DecodeJSON(r, &requestValue); err != nil {
-			mux.errHandler(w, r, err)
-			return
-		}
-
-		response, err := procedure(r.Context(), &requestValue)
-		if err != nil {
-			mux.errHandler(w, r, err)
-			return
-		}
-
-		if err := EncodeJSON(w, r, http.StatusOK, response); err != nil {
-			mux.errHandler(w, r, err)
-			return
-		}
-	})
-}
-
-func streamHandler[Request any, Message any](mux *ServeMux, stream func(ctx context.Context, r *Request) (<-chan *Message, error)) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		flusher, ok := w.(http.Flusher)
-		if !ok {
-			mux.errHandler(w, r, ClientError{
-				Code:    http.StatusBadRequest,
-				Message: "connection does not support streaming",
-			})
-			return
-		}
-
-		var requestValue Request
-		if err := DecodeQuery(r, &requestValue); err != nil {
-			mux.errHandler(w, r, err)
-			return
-		}
-
-		w.Header().Set("Content-Type", "text/event-stream")
-		w.Header().Set("Cache-Control", "no-cache")
-		w.Header().Set("Connection", "keep-alive")
-
-		ctx := r.Context()
-		eventStream, err := stream(ctx, &requestValue)
-		if err != nil {
-			mux.errHandler(w, r, err)
-			return
-		}
-
-		var buffer bytes.Buffer
-		for event := range eventStream {
-			if err := json.NewEncoder(&buffer).Encode(event); err != nil {
-				mux.errHandler(w, r, fmt.Errorf("encode event: %w", err))
-				return
-			}
-
-			if _, err := io.Copy(w, &buffer); err != nil {
-				mux.errHandler(w, r, fmt.Errorf("copy buffer to response writer: %w", err))
-				return
-			}
-
-			flusher.Flush()
-		}
-	})
+	m.notFoundHandler.ServeHTTP(w, r)
 }
