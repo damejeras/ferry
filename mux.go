@@ -66,7 +66,7 @@ func RegisterProcedure[Request any, Response any](mux *ServeMux, route string, p
 	mux.procedures[mux.pathFn(route)] = chainMiddleware(procedureHandler(mux, procedure), mux.middleware...)
 }
 
-func RegisterStream[Request any, Response any](mux *ServeMux, route string, stream func(ctx context.Context, r *Request) (<-chan *Response, error)) {
+func RegisterStream[Request any, Message any](mux *ServeMux, route string, stream func(ctx context.Context, r *Request) (<-chan *Message, error)) {
 	mux.streams[mux.pathFn(route)] = chainMiddleware(streamHandler(mux, stream), mux.middleware...)
 }
 
@@ -91,7 +91,7 @@ func procedureHandler[Request any, Response any](mux *ServeMux, procedure func(c
 	})
 }
 
-func streamHandler[Request any, Response any](mux *ServeMux, stream func(ctx context.Context, r *Request) (<-chan *Response, error)) http.Handler {
+func streamHandler[Request any, Message any](mux *ServeMux, stream func(ctx context.Context, r *Request) (<-chan *Message, error)) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		flusher, ok := w.(http.Flusher)
 		if !ok {
