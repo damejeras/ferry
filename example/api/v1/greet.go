@@ -1,6 +1,10 @@
 package v1
 
-import "context"
+import (
+	"context"
+
+	_ "ferry"
+)
 
 type GreetService interface {
 	HelloWorld(context.Context, *HelloWorldRequest) (*HelloWorldResponse, error)

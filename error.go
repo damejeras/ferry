@@ -8,6 +8,8 @@ type ServerError struct {
 	Message string `json:"error"`
 }
 
+func (e ServerError) Error() string { return e.Message }
+
 type ClientError struct {
 	Code    int    `json:"-"`
 	Message string `json:"error"`
