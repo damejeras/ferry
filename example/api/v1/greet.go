@@ -2,12 +2,14 @@ package v1
 
 import (
 	"context"
+
+	"github.com/damejeras/ferry"
 )
 
 type GreetService interface {
 	HelloWorld(context.Context, *HelloWorldRequest) (*HelloWorldResponse, error)
 	HelloName(context.Context, *HelloNameRequest) (*HelloNameResponse, error)
-	StreamGreetings(context.Context, *StreamGreetingsRequest) (<-chan *Greeting, error)
+	StreamGreetings(context.Context, *StreamGreetingsRequest) (<-chan ferry.Event[Greeting], error)
 }
 
 type HelloWorldRequest struct{}

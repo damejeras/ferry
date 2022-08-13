@@ -7,11 +7,18 @@ import (
 	"github.com/swaggest/openapi-go/openapi3"
 )
 
+// ServeMux is a replacement for http.ServeMux which allows registering remote procedures and streams.
 type ServeMux interface {
 	Handle(path string, h Handler)
 	OpenAPISpec(modification func(*openapi3.Spec)) ([]byte, error)
 
 	http.Handler
+}
+
+// Handler can only be acquired from helper methods (Procedure, Stream).
+// It provides type safety when defining API.
+type Handler interface {
+	build(meta Meta, mux *mux) (http.Handler, error)
 }
 
 func NewServeMux(options ...Option) ServeMux {
