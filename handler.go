@@ -12,18 +12,18 @@ import (
 // Handler can only be acquired from helper methods (Procedure, Stream).
 // It provides type safety when defining API.
 type Handler interface {
-	build(url *url, mux *mux) (http.Handler, error)
+	build(meta Meta, mux *mux) (http.Handler, error)
 }
 
 // Procedure will return Handler which can be used to register remote procedure in ServeMux
 func Procedure[Req any, Res any](procedure func(ctx context.Context, r *Req) (*Res, error)) Handler {
-	return procedureBuilder(func(url *url, mux *mux) (http.Handler, error) {
-		op, err := procedureOp(url, mux, new(Req), new(Res))
+	return procedureBuilder(func(meta Meta, mux *mux) (http.Handler, error) {
+		op, err := procedureOp(meta, mux, new(Req), new(Res))
 		if err != nil {
 			return nil, err
 		}
 
-		if err := mux.apiReflector.Spec.AddOperation(http.MethodPost, url.path, op); err != nil {
+		if err := mux.apiReflector.Spec.AddOperation(http.MethodPost, meta.Path, op); err != nil {
 			return nil, err
 		}
 
@@ -50,13 +50,13 @@ func Procedure[Req any, Res any](procedure func(ctx context.Context, r *Req) (*R
 
 // Stream will return Handler which can be used to register remote procedure in ServeMux
 func Stream[Req any, Msg any](stream func(ctx context.Context, r *Req) (<-chan *Msg, error)) Handler {
-	return streamBuilder(func(url *url, mux *mux) (http.Handler, error) {
-		op, err := streamOp(url, mux, new(Req))
+	return streamBuilder(func(meta Meta, mux *mux) (http.Handler, error) {
+		op, err := streamOp(meta, mux, new(Req))
 		if err != nil {
 			return nil, err
 		}
 
-		if err := mux.apiReflector.Spec.AddOperation(http.MethodGet, url.path, op); err != nil {
+		if err := mux.apiReflector.Spec.AddOperation(http.MethodGet, meta.Path, op); err != nil {
 			return nil, err
 		}
 
@@ -106,15 +106,15 @@ func Stream[Req any, Msg any](stream func(ctx context.Context, r *Req) (<-chan *
 }
 
 // procedureBuilder is the implementation of Handler interface.
-type procedureBuilder func(url *url, mux *mux) (http.Handler, error)
+type procedureBuilder func(meta Meta, mux *mux) (http.Handler, error)
 
 // streamBuilder is the implementation of handler interface
-type streamBuilder func(url *url, mux *mux) (http.Handler, error)
+type streamBuilder func(meta Meta, mux *mux) (http.Handler, error)
 
-func (b procedureBuilder) build(url *url, mux *mux) (http.Handler, error) {
-	return b(url, mux)
+func (b procedureBuilder) build(meta Meta, mux *mux) (http.Handler, error) {
+	return b(meta, mux)
 }
 
-func (b streamBuilder) build(url *url, mux *mux) (http.Handler, error) {
-	return b(url, mux)
+func (b streamBuilder) build(meta Meta, mux *mux) (http.Handler, error) {
+	return b(meta, mux)
 }

@@ -1,6 +1,7 @@
 package ferry
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/swaggest/openapi-go/openapi3"
@@ -48,21 +49,21 @@ type mux struct {
 }
 
 func (m *mux) Handle(path string, h Handler) {
-	url, err := parseURL(path)
+	meta, err := toMeta(path)
 	if err != nil {
 		panic(err)
 	}
 
-	handle, err := h.build(url, m)
+	handle, err := h.build(meta, m)
 	if err != nil {
 		panic(err)
 	}
 
 	switch h.(type) {
 	case procedureBuilder:
-		m.procedures[url.path] = chainMiddleware(handle, m.middleware...)
+		m.procedures[meta.Path] = chainMiddleware(handle, meta, m.middleware...)
 	case streamBuilder:
-		m.streams[url.path] = chainMiddleware(handle, m.middleware...)
+		m.streams[meta.Path] = chainMiddleware(handle, meta, m.middleware...)
 	default:
 		return
 	}
@@ -93,7 +94,11 @@ func (m *mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	m.notFoundHandler.ServeHTTP(w, r)
 }
 
-func chainMiddleware(h http.Handler, mw ...func(http.Handler) http.Handler) http.Handler {
+func chainMiddleware(h http.Handler, meta Meta, mw ...func(http.Handler) http.Handler) http.Handler {
+	h = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), MetaKey{}, meta)))
+	})
+
 	for i := range mw {
 		h = mw[len(mw)-1-i](h)
 	}
