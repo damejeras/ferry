@@ -1,12 +1,11 @@
 package ferry
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
+	"time"
 )
 
 // Handler can only be acquired from helper methods (Procedure, Stream).
@@ -81,22 +80,32 @@ func Stream[Req any, Msg any](stream func(ctx context.Context, r *Req) (<-chan *
 			w.Header().Set("Connection", "keep-alive")
 
 			ctx := r.Context()
-			eventStream, err := stream(ctx, &reqValue)
+			events, err := stream(ctx, &reqValue)
 			if err != nil {
 				mux.errHandler(w, r, err)
 				return
 			}
 
-			var buffer bytes.Buffer
-			for event := range eventStream {
-				if err := json.NewEncoder(&buffer).Encode(event); err != nil {
-					mux.errHandler(w, r, fmt.Errorf("encode event: %w", err))
-					return
-				}
-
-				if _, err := io.Copy(w, &buffer); err != nil {
-					mux.errHandler(w, r, fmt.Errorf("copy buffer to response writer: %w", err))
-					return
+			for {
+				select {
+				case event, ok := <-events:
+					if !ok {
+						return
+					}
+					payload, err := json.Marshal(event)
+					if err != nil {
+						mux.errHandler(w, r, fmt.Errorf("encode message: %w", err))
+						return
+					}
+					if _, err := fmt.Fprintf(w, "event: message\ndata: %s\n\n", payload); err != nil {
+						mux.errHandler(w, r, fmt.Errorf("write event to response: %w", err))
+						return
+					}
+				case <-time.After(5 * time.Second):
+					if _, err := fmt.Fprintf(w, "event: keep-alice\n\n"); err != nil {
+						mux.errHandler(w, r, fmt.Errorf("write keep-alive to response: %w", err))
+						return
+					}
 				}
 
 				flusher.Flush()
