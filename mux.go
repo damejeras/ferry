@@ -14,15 +14,10 @@ type ServeMux interface {
 }
 
 func NewServeMux(options ...Option) ServeMux {
-	reflector := openapi3.Reflector{}
-	reflector.Spec = &openapi3.Spec{Openapi: "3.0.3"}
-	reflector.Spec.Info.
-		WithDescription("Put something here")
-
 	mux := &mux{
-		apiReflector: reflector,
+		apiReflector: newReflector(),
 		errHandler:   DefaultErrorHandler,
-		middleware:   make([]Middleware, 0),
+		middleware:   make([]func(http.Handler) http.Handler, 0),
 		procedures:   make(map[string]http.Handler),
 		streams:      make(map[string]http.Handler),
 	}
@@ -46,32 +41,36 @@ func NewServeMux(options ...Option) ServeMux {
 type mux struct {
 	apiReflector    openapi3.Reflector
 	errHandler      ErrorHandler
-	middleware      []Middleware
+	middleware      []func(http.Handler) http.Handler
 	notFoundHandler http.Handler
 	procedures      map[string]http.Handler
 	streams         map[string]http.Handler
 }
 
 func (m *mux) Handle(path string, h Handler) {
-	handle, err := h.build(path, m)
+	url, err := parseURL(path)
 	if err != nil {
-		// error could come from openapi reflector when reading request and response objects
+		panic(err)
+	}
+
+	handle, err := h.build(url, m)
+	if err != nil {
 		panic(err)
 	}
 
 	switch h.(type) {
 	case procedureBuilder:
-		m.procedures[path] = chainMiddleware(handle, m.middleware...)
+		m.procedures[url.path] = chainMiddleware(handle, m.middleware...)
 	case streamBuilder:
-		m.streams[path] = chainMiddleware(handle, m.middleware...)
+		m.streams[url.path] = chainMiddleware(handle, m.middleware...)
 	default:
 		return
 	}
 }
 
-func (m *mux) OpenAPISpec(modification func(spec *openapi3.Spec)) ([]byte, error) {
-	if modification != nil {
-		modification(m.apiReflector.Spec)
+func (m *mux) OpenAPISpec(mod func(spec *openapi3.Spec)) ([]byte, error) {
+	if mod != nil {
+		mod(m.apiReflector.Spec)
 	}
 
 	return m.apiReflector.Spec.MarshalJSON()
@@ -92,4 +91,12 @@ func (m *mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	m.notFoundHandler.ServeHTTP(w, r)
+}
+
+func chainMiddleware(h http.Handler, mw ...func(http.Handler) http.Handler) http.Handler {
+	for i := range mw {
+		h = mw[len(mw)-1-i](h)
+	}
+
+	return h
 }

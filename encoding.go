@@ -13,7 +13,7 @@ import (
 )
 
 func EncodeJSON(w http.ResponseWriter, r *http.Request, status int, payload any) error {
-	bodyBytes, err := json.Marshal(payload)
+	body, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("marshal payload: %w", err)
 	}
@@ -29,7 +29,7 @@ func EncodeJSON(w http.ResponseWriter, r *http.Request, status int, payload any)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
 
-	if _, err := out.Write(bodyBytes); err != nil {
+	if _, err := out.Write(body); err != nil {
 		return fmt.Errorf("write body: %w", err)
 	}
 

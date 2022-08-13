@@ -7,38 +7,28 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-
-	"github.com/swaggest/openapi-go/openapi3"
 )
 
 // Handler can only be acquired from helper methods (Procedure, Stream).
 // It provides type safety when defining API.
 type Handler interface {
-	build(path string, mux *mux) (http.Handler, error)
+	build(url *url, mux *mux) (http.Handler, error)
 }
 
 // Procedure will return Handler which can be used to register remote procedure in ServeMux
-func Procedure[Request any, Response any](procedure func(ctx context.Context, r *Request) (*Response, error)) Handler {
-	return procedureBuilder(func(path string, mux *mux) (http.Handler, error) {
-		op := openapi3.Operation{}
-		if err := mux.apiReflector.SetRequest(&op, new(Request), http.MethodPost); err != nil {
+func Procedure[Req any, Res any](procedure func(ctx context.Context, r *Req) (*Res, error)) Handler {
+	return procedureBuilder(func(url *url, mux *mux) (http.Handler, error) {
+		op, err := procedureOp(url, mux, new(Req), new(Res))
+		if err != nil {
 			return nil, err
 		}
-		if err := mux.apiReflector.SetJSONResponse(&op, new(Response), http.StatusOK); err != nil {
-			return nil, err
-		}
-		if err := mux.apiReflector.SetJSONResponse(&op, new(ClientError), http.StatusBadRequest); err != nil {
-			return nil, err
-		}
-		if err := mux.apiReflector.SetJSONResponse(&op, new(ServerError), http.StatusInternalServerError); err != nil {
-			return nil, err
-		}
-		if err := mux.apiReflector.Spec.AddOperation(http.MethodPost, path, op); err != nil {
+
+		if err := mux.apiReflector.Spec.AddOperation(http.MethodPost, url.path, op); err != nil {
 			return nil, err
 		}
 
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			var requestValue Request
+			var requestValue Req
 			if err := DecodeJSON(r, &requestValue); err != nil {
 				mux.errHandler(w, r, err)
 				return
@@ -59,19 +49,14 @@ func Procedure[Request any, Response any](procedure func(ctx context.Context, r 
 }
 
 // Stream will return Handler which can be used to register remote procedure in ServeMux
-func Stream[Request any, Message any](stream func(ctx context.Context, r *Request) (<-chan *Message, error)) Handler {
-	return streamBuilder(func(path string, mux *mux) (http.Handler, error) {
-		op := openapi3.Operation{}
-		if err := mux.apiReflector.SetRequest(&op, new(Request), http.MethodGet); err != nil {
+func Stream[Req any, Msg any](stream func(ctx context.Context, r *Req) (<-chan *Msg, error)) Handler {
+	return streamBuilder(func(url *url, mux *mux) (http.Handler, error) {
+		op, err := streamOp(url, mux, new(Req))
+		if err != nil {
 			return nil, err
 		}
-		if err := mux.apiReflector.SetJSONResponse(&op, new(ClientError), http.StatusBadRequest); err != nil {
-			return nil, err
-		}
-		if err := mux.apiReflector.SetJSONResponse(&op, new(ServerError), http.StatusInternalServerError); err != nil {
-			return nil, err
-		}
-		if err := mux.apiReflector.Spec.AddOperation(http.MethodGet, path, op); err != nil {
+
+		if err := mux.apiReflector.Spec.AddOperation(http.MethodGet, url.path, op); err != nil {
 			return nil, err
 		}
 
@@ -85,8 +70,8 @@ func Stream[Request any, Message any](stream func(ctx context.Context, r *Reques
 				return
 			}
 
-			var requestValue Request
-			if err := DecodeQuery(r, &requestValue); err != nil {
+			var reqValue Req
+			if err := DecodeQuery(r, &reqValue); err != nil {
 				mux.errHandler(w, r, err)
 				return
 			}
@@ -96,7 +81,7 @@ func Stream[Request any, Message any](stream func(ctx context.Context, r *Reques
 			w.Header().Set("Connection", "keep-alive")
 
 			ctx := r.Context()
-			eventStream, err := stream(ctx, &requestValue)
+			eventStream, err := stream(ctx, &reqValue)
 			if err != nil {
 				mux.errHandler(w, r, err)
 				return
@@ -121,10 +106,15 @@ func Stream[Request any, Message any](stream func(ctx context.Context, r *Reques
 }
 
 // procedureBuilder is the implementation of Handler interface.
-type procedureBuilder func(path string, mux *mux) (http.Handler, error)
+type procedureBuilder func(url *url, mux *mux) (http.Handler, error)
 
 // streamBuilder is the implementation of handler interface
-type streamBuilder func(path string, mux *mux) (http.Handler, error)
+type streamBuilder func(url *url, mux *mux) (http.Handler, error)
 
-func (b procedureBuilder) build(path string, mux *mux) (http.Handler, error) { return b(path, mux) }
-func (b streamBuilder) build(path string, mux *mux) (http.Handler, error)    { return b(path, mux) }
+func (b procedureBuilder) build(url *url, mux *mux) (http.Handler, error) {
+	return b(url, mux)
+}
+
+func (b streamBuilder) build(url *url, mux *mux) (http.Handler, error) {
+	return b(url, mux)
+}

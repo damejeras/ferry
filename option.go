@@ -1,5 +1,7 @@
 package ferry
 
+import "net/http"
+
 type Option func(mux *mux)
 
 func WithErrorHandler(handler ErrorHandler) Option {
@@ -8,7 +10,7 @@ func WithErrorHandler(handler ErrorHandler) Option {
 	}
 }
 
-func WithMiddleware(mw Middleware) Option {
+func WithMiddleware(mw func(http.Handler) http.Handler) Option {
 	return func(s *mux) {
 		s.middleware = append(s.middleware, mw)
 	}
