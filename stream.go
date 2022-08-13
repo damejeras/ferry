@@ -56,6 +56,13 @@ func Stream[Req any, Msg any](stream func(ctx context.Context, r *Req) (<-chan E
 				return
 			}
 
+			// respond immediately with keep-alive message
+			if _, err := fmt.Fprintf(w, "event: keep-alive\n\n"); err != nil {
+				mux.errHandler(w, r, fmt.Errorf("write initial keep-alive: %w", err))
+				return
+			}
+			flusher.Flush()
+
 			for {
 				select {
 				case event, ok := <-events:
@@ -68,12 +75,13 @@ func Stream[Req any, Msg any](stream func(ctx context.Context, r *Req) (<-chan E
 						return
 					}
 					if _, err := fmt.Fprintf(w, "id: %s\nevent: %s\ndata: %s\n\n", event.ID, payloadType, payload); err != nil {
-						mux.errHandler(w, r, fmt.Errorf("write message to response: %w", err))
+						mux.errHandler(w, r, fmt.Errorf("write message: %w", err))
 						return
 					}
+				// keep connection alive
 				case <-time.After(5 * time.Second):
 					if _, err := fmt.Fprintf(w, "event: keep-alive\n\n"); err != nil {
-						mux.errHandler(w, r, fmt.Errorf("write keep-alive to response: %w", err))
+						mux.errHandler(w, r, fmt.Errorf("write keep-alive: %w", err))
 						return
 					}
 				}
