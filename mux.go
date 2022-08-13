@@ -95,13 +95,11 @@ func (m *mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func chainMiddleware(h http.Handler, meta Meta, mw ...func(http.Handler) http.Handler) http.Handler {
-	h = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		h.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), MetaKey{}, meta)))
-	})
-
 	for i := range mw {
 		h = mw[len(mw)-1-i](h)
 	}
 
-	return h
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), MetaKey{}, meta)))
+	})
 }
