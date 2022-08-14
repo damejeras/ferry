@@ -13,14 +13,19 @@ import (
 
 func main() {
 	mux := ferry.NewServeMux(
+		// a prefix for the api
 		"/api/v1",
+		// this will enable /api/v1/openapi.json and /api/v1/openapi.yaml endpoints
 		ferry.WithOpenApiSpec(func(spec *openapi3.Spec) {
 			spec.Servers = []openapi3.Server{{URL: "http://localhost:7777"}}
 			spec.Info.WithDescription("This is example on how to use ferry.")
 			spec.Info.WithTitle("Example API")
 		}),
+		// permissive CORS
 		ferry.WithMiddleware(cors.AllowAll().Handler),
+		// log requests to console
 		ferry.WithMiddleware(middleware.Logger),
+		// use default logging functionality but log errors to with standard logger
 		ferry.WithErrorHandler(func(w http.ResponseWriter, r *http.Request, err error) {
 			switch err.(type) {
 			case ferry.ClientError:
@@ -33,8 +38,17 @@ func main() {
 	)
 
 	greetSvc := greet.NewService()
+	// POST http://localhost:7777/api/v1/GreetService.HelloWorld
+	// the endpoint name is being reflected from the GreetService in api/v1/greet.go
 	mux.Handle(ferry.Procedure(greetSvc.HelloWorld))
+	// POST http://localhost:7777/api/v1/GreetService.HelloName
+	// Content-Type: application/json
+	// { "name": "Joe" }
+	// the endpoint name is being reflected from the GreetService in api/v1/greet.go
 	mux.Handle(ferry.Procedure(greetSvc.HelloName))
+	// GET http://localhost:7777/api/v1/GreetService.StreamGreetings
+	// This will start streaming SSE events
+	// the endpoint name is being reflected from the GreetService in api/v1/greet.go
 	mux.Handle(ferry.Stream(greetSvc.StreamGreetings))
 
 	if err := http.ListenAndServe(":7777", mux); err != nil {
