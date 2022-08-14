@@ -1,8 +1,18 @@
 package ferry
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/swaggest/openapi-go/openapi3"
+)
 
 type Option func(mux *mux)
+
+func WithOpenApiSpec(mod func(spec *openapi3.Spec)) Option {
+	return func(s *mux) {
+		s.openapiSpecMod = mod
+	}
+}
 
 func WithErrorHandler(handler ErrorHandler) Option {
 	return func(s *mux) {

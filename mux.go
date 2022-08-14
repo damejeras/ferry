@@ -1,33 +1,33 @@
 package ferry
 
 import (
-	"context"
 	"net/http"
+	"strings"
+	"sync"
 
 	"github.com/swaggest/openapi-go/openapi3"
 )
 
-// ServeMux is a replacement for http.ServeMux which allows registering remote procedures and streams.
+// ServeMux is a replacement for http.ServeMux which allows registering only remote procedures and streams.
 type ServeMux interface {
-	Handle(path string, h Handler)
-	OpenAPISpec(modification func(*openapi3.Spec)) ([]byte, error)
-
+	Handle(h Handler)
 	http.Handler
 }
 
 // Handler can only be acquired from helper methods (Procedure, Stream).
 // It provides type safety when defining API.
 type Handler interface {
-	build(meta Meta, mux *mux) (http.Handler, error)
+	build(mux *mux) (string, http.Handler, error)
 }
 
-func NewServeMux(options ...Option) ServeMux {
+func NewServeMux(apiPrefix string, options ...Option) ServeMux {
 	mux := &mux{
+		apiPrefix:    "/" + strings.Trim(apiPrefix, "/"),
 		apiReflector: newReflector(),
 		errHandler:   DefaultErrorHandler,
+		getHandlers:  make(map[string]http.Handler),
 		middleware:   make([]func(http.Handler) http.Handler, 0),
-		procedures:   make(map[string]http.Handler),
-		streams:      make(map[string]http.Handler),
+		postHandlers: make(map[string]http.Handler),
 	}
 
 	mux.notFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -47,66 +47,64 @@ func NewServeMux(options ...Option) ServeMux {
 }
 
 type mux struct {
+	apiPrefix       string
 	apiReflector    openapi3.Reflector
 	errHandler      ErrorHandler
 	middleware      []func(http.Handler) http.Handler
 	notFoundHandler http.Handler
-	procedures      map[string]http.Handler
-	streams         map[string]http.Handler
+	openapiSpecMod  func(spec *openapi3.Spec)
+	postHandlers    map[string]http.Handler
+	getHandlers     map[string]http.Handler
+	mutex           sync.Mutex
+	ready           bool
 }
 
-func (m *mux) Handle(path string, h Handler) {
-	meta, err := toMeta(path)
-	if err != nil {
-		panic(err)
-	}
-
-	handle, err := h.build(meta, m)
+func (m *mux) Handle(h Handler) {
+	path, handle, err := h.build(m)
 	if err != nil {
 		panic(err)
 	}
 
 	switch h.(type) {
 	case procedureBuilder:
-		m.procedures[meta.Path] = chainMiddleware(handle, meta, m.middleware...)
+		m.postHandlers[path] = handle
 	case streamBuilder:
-		m.streams[meta.Path] = chainMiddleware(handle, meta, m.middleware...)
+		m.getHandlers[path] = handle
 	default:
 		return
 	}
 }
 
-func (m *mux) OpenAPISpec(mod func(spec *openapi3.Spec)) ([]byte, error) {
-	if mod != nil {
-		mod(m.apiReflector.Spec)
+func (m *mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if !m.ready {
+		// before serving initialize OpenAPI handlers
+		openapiHandlers(m)
 	}
 
-	return m.apiReflector.Spec.MarshalJSON()
-}
-
-func (m *mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var handler http.Handler
 	switch r.Method {
 	case http.MethodPost:
-		handler = m.procedures[r.URL.Path]
+		handler = m.postHandlers[r.URL.Path]
 	case http.MethodGet:
-		handler = m.streams[r.URL.Path]
+		handler = m.getHandlers[r.URL.Path]
 	}
 
 	if handler != nil {
-		handler.ServeHTTP(w, r)
+		chainMiddleware(handler, m.middleware...).ServeHTTP(w, r)
 		return
 	}
 
-	m.notFoundHandler.ServeHTTP(w, r)
+	chainMiddleware(m.notFoundHandler, m.middleware...).ServeHTTP(w, r)
 }
 
-func chainMiddleware(h http.Handler, meta Meta, mw ...func(http.Handler) http.Handler) http.Handler {
+func chainMiddleware(h http.Handler, mw ...func(http.Handler) http.Handler) http.Handler {
 	for i := range mw {
 		h = mw[len(mw)-1-i](h)
 	}
 
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		h.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), MetaKey{}, meta)))
-	})
+	return h
+}
+
+func buildPath(prefix, service, method string) string {
+	return strings.Join([]string{prefix, strings.Join([]string{service, method}, ".")}, "/")
 }

@@ -10,6 +10,7 @@ require (
 )
 
 require (
+	github.com/go-chi/cors v1.2.1 // indirect
 	github.com/swaggest/jsonschema-go v0.3.36 // indirect
 	github.com/swaggest/refl v1.1.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

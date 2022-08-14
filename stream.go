@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"runtime"
+	"strings"
 	"time"
 )
 
@@ -17,19 +19,34 @@ type Event[P any] struct {
 
 // Stream will return Handler which can be used to register SSE streams in ServeMux.
 func Stream[Req any, Msg any](stream func(ctx context.Context, r *Req) (<-chan Event[Msg], error)) Handler {
-	return streamBuilder(func(meta Meta, mux *mux) (http.Handler, error) {
-		op, err := streamOp(meta, mux, new(Req))
+	fn := runtime.FuncForPC(reflect.ValueOf(stream).Pointer()).Name()
+	if !strings.HasSuffix(fn, "-fm") {
+		panic("stream can only built from function with receiver")
+	}
+
+	nameParts := strings.Split(strings.TrimSuffix(fn, "-fm"), ".")
+	if len(nameParts) < 2 {
+		panic("stream can only built from function with receiver")
+	}
+
+	serviceName := nameParts[len(nameParts)-2]
+	methodName := nameParts[len(nameParts)-1]
+
+	return streamBuilder(func(mux *mux) (string, http.Handler, error) {
+		path := buildPath(mux.apiPrefix, serviceName, methodName)
+
+		op, err := streamOp(path, mux, new(Req))
 		if err != nil {
-			return nil, err
+			return "", nil, err
 		}
 
-		if err := mux.apiReflector.Spec.AddOperation(http.MethodGet, meta.Path, op); err != nil {
-			return nil, err
+		if err := mux.apiReflector.Spec.AddOperation(http.MethodGet, path, op); err != nil {
+			return "", nil, err
 		}
 
 		payloadType := reflect.TypeOf(new(Msg)).Elem().Name()
 
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			flusher, ok := w.(http.Flusher)
 			if !ok {
 				mux.errHandler(w, r, ClientError{
@@ -88,13 +105,15 @@ func Stream[Req any, Msg any](stream func(ctx context.Context, r *Req) (<-chan E
 
 				flusher.Flush()
 			}
-		}), nil
+		})
+
+		return path, handler, nil
 	})
 }
 
 // streamBuilder is the implementation of handler interface
-type streamBuilder func(meta Meta, mux *mux) (http.Handler, error)
+type streamBuilder func(mux *mux) (string, http.Handler, error)
 
-func (b streamBuilder) build(meta Meta, mux *mux) (http.Handler, error) {
-	return b(meta, mux)
+func (b streamBuilder) build(mux *mux) (string, http.Handler, error) {
+	return b(mux)
 }
