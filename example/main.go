@@ -25,7 +25,7 @@ func main() {
 		ferry.WithMiddleware(cors.AllowAll().Handler),
 		// log requests to console
 		ferry.WithMiddleware(middleware.Logger),
-		// use default logging functionality but log errors to with standard logger
+		// use default logging functionality but log errors with standard logger
 		ferry.WithErrorHandler(func(w http.ResponseWriter, r *http.Request, err error) {
 			switch err.(type) {
 			case ferry.ClientError:
@@ -37,6 +37,8 @@ func main() {
 		}),
 	)
 
+	// This returns GreetService implementation from api/v1/greet.go. GreetService is the description of our API.
+	// The implementation is done in internal/greet/service.go
 	greetSvc := greet.NewService()
 	// POST http://localhost:7777/api/v1/GreetService.HelloWorld
 	// the endpoint name is being reflected from the GreetService in api/v1/greet.go
