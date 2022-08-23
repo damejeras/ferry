@@ -94,7 +94,7 @@ func (m *mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chainMiddleware(m.notFoundHandler, m.middleware...).ServeHTTP(w, r)
+	m.notFoundHandler.ServeHTTP(w, r)
 }
 
 func chainMiddleware(h http.Handler, mw ...func(http.Handler) http.Handler) http.Handler {

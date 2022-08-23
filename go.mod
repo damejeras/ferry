@@ -2,10 +2,12 @@ module github.com/damejeras/ferry
 
 go 1.18
 
-require github.com/swaggest/openapi-go v0.2.20
+require (
+	github.com/swaggest/jsonschema-go v0.3.36
+	github.com/swaggest/openapi-go v0.2.20
+)
 
 require (
-	github.com/swaggest/jsonschema-go v0.3.36 // indirect
 	github.com/swaggest/refl v1.1.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
