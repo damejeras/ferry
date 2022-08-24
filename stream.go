@@ -17,7 +17,8 @@ type Event[P any] struct {
 	Payload *P
 }
 
-// Stream will return Handler which can be used to register SSE streams in ServeMux.
+// Stream will return Handler which can be used to register SSE stream in Router.
+// This function call will panic if provided function does not have a receiver.
 func Stream[Req any, Msg any](stream func(ctx context.Context, r *Req) (<-chan Event[Msg], error)) Handler {
 	fn := runtime.FuncForPC(reflect.ValueOf(stream).Pointer()).Name()
 	if !strings.HasSuffix(fn, "-fm") {
@@ -33,11 +34,9 @@ func Stream[Req any, Msg any](stream func(ctx context.Context, r *Req) (<-chan E
 	methodName := nameParts[len(nameParts)-1]
 
 	return streamBuilder(func(mux *mux) (string, http.HandlerFunc) {
-		path := "/" + serviceName + "." + methodName
-
 		payloadType := reflect.TypeOf(new(Msg)).Elem().Name()
 
-		handler := func(w http.ResponseWriter, r *http.Request) {
+		return "/" + serviceName + "." + methodName, func(w http.ResponseWriter, r *http.Request) {
 			flusher, ok := w.(http.Flusher)
 			if !ok {
 				mux.errHandler(w, r, ClientError{
@@ -97,8 +96,6 @@ func Stream[Req any, Msg any](stream func(ctx context.Context, r *Req) (<-chan E
 				flusher.Flush()
 			}
 		}
-
-		return path, handler
 	})
 }
 

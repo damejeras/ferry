@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	v1 := ferry.NewServeMux(
+	v1 := ferry.NewRouter(
 		// use default error handling but log errors with standard logger
 		ferry.WithErrorHandler(func(w http.ResponseWriter, r *http.Request, err error) {
 			switch err.(type) {
@@ -25,6 +25,7 @@ func main() {
 		}),
 	)
 
+	// All the modifications to Router should be made before registering handlers.
 	v1.Use(
 		// permissive CORS
 		cors.AllowAll().Handler,

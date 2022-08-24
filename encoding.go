@@ -3,7 +3,6 @@ package ferry
 import (
 	"compress/gzip"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,7 +11,8 @@ import (
 	"strings"
 )
 
-func EncodeJSON(w http.ResponseWriter, r *http.Request, status int, payload any) error {
+// EncodeJSONResponse encodes payload to JSON and writes it to http.ResponseWriter along with all required headers.
+func EncodeJSONResponse(w http.ResponseWriter, r *http.Request, status int, payload any) error {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("marshal payload: %w", err)
@@ -36,8 +36,10 @@ func EncodeJSON(w http.ResponseWriter, r *http.Request, status int, payload any)
 	return nil
 }
 
-func DecodeJSON(r *http.Request, v any) error {
-	if r.Header.Get("Content-type") != "application/json" {
+// DecodeJSON decodes *http.Request into target struct.
+// Request must have "Content-Type" header set to "application/json".
+func DecodeJSON[T any](r *http.Request, v *T) error {
+	if r.Header.Get("Content-Type") != "application/json" {
 		return ClientError{
 			Code:    http.StatusUnsupportedMediaType,
 			Message: "application/json content-type expected",
@@ -51,12 +53,10 @@ func DecodeJSON(r *http.Request, v any) error {
 	return r.Body.Close()
 }
 
-func DecodeQuery(r *http.Request, v any) error {
+// DecodeQuery decodes query values from http.Request into target struct.
+// This function maps r.URL.Query values to struct properties by `query` tag.
+func DecodeQuery[T any](r *http.Request, v *T) error {
 	targetType := reflect.TypeOf(v)
-	if targetType.Kind() != reflect.Ptr || reflect.ValueOf(v).Elem().Kind() != reflect.Struct {
-		return errors.New("target should be pointer to a struct")
-	}
-
 	targetValue := reflect.ValueOf(v)
 
 	for i := 0; i < targetType.Elem().NumField(); i++ {

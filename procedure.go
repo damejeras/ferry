@@ -8,7 +8,8 @@ import (
 	"strings"
 )
 
-// Procedure will return Handler which can be used to register remote procedure in ServeMux
+// Procedure will return Handler which can be used to register remote procedure in Router.
+// This function call will panic if provided function does not have a receiver.
 func Procedure[Req any, Res any](procedure func(ctx context.Context, r *Req) (*Res, error)) Handler {
 	fn := runtime.FuncForPC(reflect.ValueOf(procedure).Pointer()).Name()
 	if !strings.HasSuffix(fn, "-fm") {
@@ -23,15 +24,14 @@ func Procedure[Req any, Res any](procedure func(ctx context.Context, r *Req) (*R
 	serviceName := nameParts[len(nameParts)-2]
 	methodName := nameParts[len(nameParts)-1]
 
-	decodeFn := DecodeJSON
+	decodeFn := DecodeJSON[Req]
 	if reflect.TypeOf(new(Req)).Elem().NumField() == 0 {
-		decodeFn = func(r *http.Request, v any) error { return nil }
+		// skip decoding if there are no parameters.
+		decodeFn = func(r *http.Request, v *Req) error { return nil }
 	}
 
 	return procedureBuilder(func(mux *mux) (string, http.HandlerFunc) {
-		path := "/" + serviceName + "." + methodName
-
-		handler := func(w http.ResponseWriter, r *http.Request) {
+		return "/" + serviceName + "." + methodName, func(w http.ResponseWriter, r *http.Request) {
 			var requestValue Req
 			if err := decodeFn(r, &requestValue); err != nil {
 				mux.errHandler(w, r, err)
@@ -44,13 +44,11 @@ func Procedure[Req any, Res any](procedure func(ctx context.Context, r *Req) (*R
 				return
 			}
 
-			if err := EncodeJSON(w, r, http.StatusOK, response); err != nil {
+			if err := EncodeJSONResponse(w, r, http.StatusOK, response); err != nil {
 				mux.errHandler(w, r, err)
 				return
 			}
 		}
-
-		return path, handler
 	})
 }
 

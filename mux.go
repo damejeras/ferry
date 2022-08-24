@@ -6,11 +6,12 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// ServeMux is a replacement for http.ServeMux which allows registering only remote procedures and streams.
+// Router is the wrapper of chi.Router which allows to register Procedure and Stream handlers.
+// This router is intended to be mounted on regular chi Router.
 type Router interface {
-	chi.Router
-
 	Register(Handler)
+
+	chi.Router
 }
 
 // Handler can only be acquired from helper methods (Procedure, Stream).
@@ -19,38 +20,39 @@ type Handler interface {
 	build(mux *mux) (string, http.HandlerFunc)
 }
 
-func NewServeMux(options ...Option) Router {
-	apiRouter := chi.NewRouter()
+// NewRouter creates a Router instance. Router is the extension of chi.Router.
+func NewRouter(options ...Option) Router {
+	router := chi.NewRouter()
 
-	mux := &mux{
+	m := &mux{
 		errHandler: DefaultErrorHandler,
 
-		Router: apiRouter,
+		Router: router,
 	}
 
-	apiRouter.NotFound(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if err := EncodeJSON(w, r, http.StatusNotFound, ClientError{
+	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
+		if err := EncodeJSONResponse(w, r, http.StatusNotFound, ClientError{
 			Code:    http.StatusNotFound,
 			Message: "not found",
 		}); err != nil {
-			mux.errHandler(w, r, err)
+			m.errHandler(w, r, err)
 		}
-	}))
+	})
 
-	apiRouter.MethodNotAllowed(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if err := EncodeJSON(w, r, http.StatusNotFound, ClientError{
+	router.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
+		if err := EncodeJSONResponse(w, r, http.StatusNotFound, ClientError{
 			Code:    http.StatusMethodNotAllowed,
 			Message: "method not allowed",
 		}); err != nil {
-			mux.errHandler(w, r, err)
+			m.errHandler(w, r, err)
 		}
-	}))
+	})
 
 	for i := range options {
-		options[i](mux)
+		options[i](m)
 	}
 
-	return mux
+	return m
 }
 
 type mux struct {
