@@ -32,21 +32,12 @@ func Stream[Req any, Msg any](stream func(ctx context.Context, r *Req) (<-chan E
 	serviceName := nameParts[len(nameParts)-2]
 	methodName := nameParts[len(nameParts)-1]
 
-	return streamBuilder(func(mux *mux) (string, http.Handler, error) {
-		path := buildPath(mux.apiPrefix, serviceName, methodName)
-
-		op, err := streamOp(path, mux, new(Req))
-		if err != nil {
-			return "", nil, err
-		}
-
-		if err := mux.apiReflector.Spec.AddOperation(http.MethodGet, path, op); err != nil {
-			return "", nil, err
-		}
+	return streamBuilder(func(mux *mux) (string, http.HandlerFunc) {
+		path := "/" + serviceName + "." + methodName
 
 		payloadType := reflect.TypeOf(new(Msg)).Elem().Name()
 
-		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
 			flusher, ok := w.(http.Flusher)
 			if !ok {
 				mux.errHandler(w, r, ClientError{
@@ -105,15 +96,15 @@ func Stream[Req any, Msg any](stream func(ctx context.Context, r *Req) (<-chan E
 
 				flusher.Flush()
 			}
-		})
+		}
 
-		return path, handler, nil
+		return path, handler
 	})
 }
 
 // streamBuilder is the implementation of handler interface
-type streamBuilder func(mux *mux) (string, http.Handler, error)
+type streamBuilder func(mux *mux) (string, http.HandlerFunc)
 
-func (b streamBuilder) build(mux *mux) (string, http.Handler, error) {
+func (b streamBuilder) build(mux *mux) (string, http.HandlerFunc) {
 	return b(mux)
 }

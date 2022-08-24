@@ -28,19 +28,10 @@ func Procedure[Req any, Res any](procedure func(ctx context.Context, r *Req) (*R
 		decodeFn = func(r *http.Request, v any) error { return nil }
 	}
 
-	return procedureBuilder(func(mux *mux) (string, http.Handler, error) {
-		path := buildPath(mux.apiPrefix, serviceName, methodName)
+	return procedureBuilder(func(mux *mux) (string, http.HandlerFunc) {
+		path := "/" + serviceName + "." + methodName
 
-		op, err := procedureOp(serviceName, mux, new(Req), new(Res))
-		if err != nil {
-			return "", nil, err
-		}
-
-		if err := mux.apiReflector.Spec.AddOperation(http.MethodPost, path, op); err != nil {
-			return "", nil, err
-		}
-
-		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
 			var requestValue Req
 			if err := decodeFn(r, &requestValue); err != nil {
 				mux.errHandler(w, r, err)
@@ -57,15 +48,15 @@ func Procedure[Req any, Res any](procedure func(ctx context.Context, r *Req) (*R
 				mux.errHandler(w, r, err)
 				return
 			}
-		})
+		}
 
-		return path, handler, nil
+		return path, handler
 	})
 }
 
 // procedureBuilder is the implementation of Handler interface.
-type procedureBuilder func(mux *mux) (string, http.Handler, error)
+type procedureBuilder func(mux *mux) (string, http.HandlerFunc)
 
-func (b procedureBuilder) build(mux *mux) (string, http.Handler, error) {
+func (b procedureBuilder) build(mux *mux) (string, http.HandlerFunc) {
 	return b(mux)
 }

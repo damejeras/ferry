@@ -18,10 +18,10 @@ type ClientError struct {
 func (e ClientError) Error() string { return e.Message }
 
 var DefaultErrorHandler ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
-	switch err.(type) {
-	case ClientError:
-		_ = EncodeJSON(w, r, err.(ClientError).Code, err.(ClientError))
-	default:
+	clientErr, ok := err.(ClientError)
+	if ok {
+		_ = EncodeJSON(w, r, clientErr.Code, clientErr)
+	} else {
 		_ = EncodeJSON(w, r, http.StatusInternalServerError, ServerError{"internal server error"})
 	}
 }
