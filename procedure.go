@@ -30,31 +30,37 @@ func Procedure[Req any, Res any](procedure func(ctx context.Context, r *Req) (*R
 		decodeFn = func(r *http.Request, v *Req) error { return nil }
 	}
 
-	return procedureBuilder(func(mux *mux) (string, http.HandlerFunc) {
-		return "/" + serviceName + "." + methodName, func(w http.ResponseWriter, r *http.Request) {
-			var requestValue Req
-			if err := decodeFn(r, &requestValue); err != nil {
-				mux.errHandler(w, r, err)
-				return
-			}
+	params, err := requestJSONReflection(new(Req))
+	if err != nil {
+		panic(err)
+	}
 
-			response, err := procedure(r.Context(), &requestValue)
-			if err != nil {
-				mux.errHandler(w, r, err)
-				return
-			}
+	return procedureBuilder(func(mux *mux) (spec, http.HandlerFunc) {
+		return spec{httpMethod: "POST", serviceName: serviceName, methodName: methodName, params: params},
+			func(w http.ResponseWriter, r *http.Request) {
+				var requestValue Req
+				if err := decodeFn(r, &requestValue); err != nil {
+					mux.errHandler(w, r, err)
+					return
+				}
 
-			if err := EncodeJSONResponse(w, r, http.StatusOK, response); err != nil {
-				mux.errHandler(w, r, err)
-				return
+				response, err := procedure(r.Context(), &requestValue)
+				if err != nil {
+					mux.errHandler(w, r, err)
+					return
+				}
+
+				if err := EncodeJSONResponse(w, r, http.StatusOK, response); err != nil {
+					mux.errHandler(w, r, err)
+					return
+				}
 			}
-		}
 	})
 }
 
 // procedureBuilder is the implementation of Handler interface.
-type procedureBuilder func(mux *mux) (string, http.HandlerFunc)
+type procedureBuilder func(mux *mux) (spec, http.HandlerFunc)
 
-func (b procedureBuilder) build(mux *mux) (string, http.HandlerFunc) {
+func (b procedureBuilder) build(mux *mux) (spec, http.HandlerFunc) {
 	return b(mux)
 }
