@@ -6,9 +6,9 @@ import "net/http"
 var DefaultErrorHandler ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 	clientErr, ok := err.(ClientError)
 	if ok {
-		_ = EncodeJSONResponse(w, r, clientErr.Code, clientErr)
+		_ = Encode(w, r, clientErr.Code, clientErr)
 	} else {
-		_ = EncodeJSONResponse(w, r, http.StatusInternalServerError, ServerError{"internal server error"})
+		_ = Encode(w, r, http.StatusInternalServerError, ServerError{"internal server error"})
 	}
 }
 

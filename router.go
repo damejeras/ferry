@@ -16,12 +16,6 @@ type Router interface {
 	chi.Router
 }
 
-// Handler can only be acquired from helper methods (Procedure, Stream).
-// It provides type safety when defining API.
-type Handler interface {
-	build(mux *mux) (spec, http.HandlerFunc)
-}
-
 // NewRouter creates a Router instance. Router is the extension of chi.Router.
 func NewRouter(options ...Option) Router {
 	router := chi.NewRouter()
@@ -34,7 +28,7 @@ func NewRouter(options ...Option) Router {
 	}
 
 	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		if err := EncodeJSONResponse(w, r, http.StatusNotFound, ClientError{
+		if err := Encode(w, r, http.StatusNotFound, ClientError{
 			Code:    http.StatusNotFound,
 			Message: "not found",
 		}); err != nil {
@@ -43,7 +37,7 @@ func NewRouter(options ...Option) Router {
 	})
 
 	router.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
-		if err := EncodeJSONResponse(w, r, http.StatusNotFound, ClientError{
+		if err := Encode(w, r, http.StatusNotFound, ClientError{
 			Code:    http.StatusMethodNotAllowed,
 			Message: "method not allowed",
 		}); err != nil {
@@ -58,6 +52,7 @@ func NewRouter(options ...Option) Router {
 	return m
 }
 
+// mux is the implementation of Router interface.
 type mux struct {
 	errHandler ErrorHandler
 	spec       []spec
@@ -68,15 +63,14 @@ type mux struct {
 }
 
 func (m *mux) Register(h Handler) {
-	s, handle := h.build(m)
-	path := "/" + s.serviceName + "." + s.methodName
+	s, handle := h(m)
 
-	switch h.(type) {
-	case procedureBuilder:
-		m.Post(path, handle)
+	switch s.handlerType {
+	case procedureHandler:
+		m.Post(s.path(), handle)
 		m.spec = append(m.spec, s)
-	case streamBuilder:
-		m.Get(path, handle)
+	case streamHandler:
+		m.Get(s.path(), handle)
 		m.spec = append(m.spec, s)
 	default:
 		return

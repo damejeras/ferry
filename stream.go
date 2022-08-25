@@ -19,13 +19,13 @@ type Event[P any] struct {
 
 // Stream will return Handler which can be used to register SSE stream in Router.
 // This function call will panic if provided function does not have a receiver.
-func Stream[Req any, Msg any](stream func(ctx context.Context, r *Req) (<-chan Event[Msg], error)) Handler {
-	fn := runtime.FuncForPC(reflect.ValueOf(stream).Pointer()).Name()
-	if !strings.HasSuffix(fn, "-fm") {
+func Stream[Req any, Msg any](fn func(ctx context.Context, r *Req) (<-chan Event[Msg], error)) Handler {
+	name := runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name()
+	if !strings.HasSuffix(name, "-fm") {
 		panic("stream can only built from function with receiver")
 	}
 
-	nameParts := strings.Split(strings.TrimSuffix(fn, "-fm"), ".")
+	nameParts := strings.Split(strings.TrimSuffix(name, "-fm"), ".")
 	if len(nameParts) < 2 {
 		panic("stream can only built from function with receiver")
 	}
@@ -33,25 +33,25 @@ func Stream[Req any, Msg any](stream func(ctx context.Context, r *Req) (<-chan E
 	serviceName := nameParts[len(nameParts)-2]
 	methodName := nameParts[len(nameParts)-1]
 
-	body, err := reflectBody(new(Req))
+	body, err := jsonMapping(new(Req))
 	if err != nil {
 		panic(err)
 	}
 
-	query, err := reflectQuery(new(Req))
+	query, err := queryMapping(new(Req))
 	if err != nil {
 		panic(err)
 	}
 
 	s := spec{
-		httpMethod:  http.MethodGet,
+		handlerType: streamHandler,
 		serviceName: serviceName,
 		methodName:  methodName,
 		body:        body,
 		query:       query,
 	}
 
-	return streamBuilder(func(mux *mux) (spec, http.HandlerFunc) {
+	return func(mux *mux) (spec, http.HandlerFunc) {
 		payloadType := reflect.TypeOf(new(Msg)).Elem().Name()
 
 		return s, func(w http.ResponseWriter, r *http.Request) {
@@ -65,7 +65,7 @@ func Stream[Req any, Msg any](stream func(ctx context.Context, r *Req) (<-chan E
 			}
 
 			var reqValue Req
-			if err := DecodeQuery(r, &reqValue); err != nil {
+			if err := decodeQuery(r, &reqValue); err != nil {
 				mux.errHandler(w, r, err)
 				return
 			}
@@ -75,7 +75,7 @@ func Stream[Req any, Msg any](stream func(ctx context.Context, r *Req) (<-chan E
 			w.Header().Set("Connection", "keep-alive")
 
 			ctx := r.Context()
-			events, err := stream(ctx, &reqValue)
+			events, err := fn(ctx, &reqValue)
 			if err != nil {
 				mux.errHandler(w, r, err)
 				return
@@ -114,12 +114,5 @@ func Stream[Req any, Msg any](stream func(ctx context.Context, r *Req) (<-chan E
 				flusher.Flush()
 			}
 		}
-	})
-}
-
-// streamBuilder is the implementation of handler interface
-type streamBuilder func(mux *mux) (spec, http.HandlerFunc)
-
-func (b streamBuilder) build(mux *mux) (spec, http.HandlerFunc) {
-	return b(mux)
+	}
 }

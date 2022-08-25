@@ -6,11 +6,15 @@ import (
 )
 
 type spec struct {
-	httpMethod  string
+	handlerType handlerType
 	serviceName string
 	methodName  string
 	body        map[string]string
 	query       map[string]string
+}
+
+func (s spec) path() string {
+	return "/" + s.serviceName + "." + s.methodName
 }
 
 func specHandler(spec []spec) http.HandlerFunc {
@@ -25,15 +29,23 @@ func specHandler(spec []spec) http.HandlerFunc {
 		endpoints := make([]endpoint, 0)
 
 		for _, s := range spec {
-			endpoints = append(endpoints, endpoint{
-				Method: s.httpMethod,
-				Path:   strings.TrimSuffix(fullURL, "/") + "/" + s.serviceName + "." + s.methodName,
-				Body:   s.body,
-				Query:  s.query,
-			})
+			e := endpoint{
+				Path:  strings.TrimSuffix(fullURL, "/") + s.path(),
+				Body:  s.body,
+				Query: s.query,
+			}
+
+			switch s.handlerType {
+			case procedureHandler:
+				e.Method = http.MethodPost
+			case streamHandler:
+				e.Method = http.MethodGet
+			}
+
+			endpoints = append(endpoints, e)
 		}
 
-		_ = IndentJSONResponse(w, r, http.StatusOK, endpoints)
+		_ = IndentEncode(w, r, http.StatusOK, endpoints)
 	}
 }
 

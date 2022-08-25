@@ -10,13 +10,13 @@ import (
 
 // Procedure will return Handler which can be used to register remote procedure in Router.
 // This function call will panic if provided function does not have a receiver.
-func Procedure[Req any, Res any](procedure func(ctx context.Context, r *Req) (*Res, error)) Handler {
-	fn := runtime.FuncForPC(reflect.ValueOf(procedure).Pointer()).Name()
-	if !strings.HasSuffix(fn, "-fm") {
+func Procedure[Req any, Res any](fn func(ctx context.Context, r *Req) (*Res, error)) Handler {
+	name := runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name()
+	if !strings.HasSuffix(name, "-fm") {
 		panic("procedure can only built from function with receiver")
 	}
 
-	nameParts := strings.Split(strings.TrimSuffix(fn, "-fm"), ".")
+	nameParts := strings.Split(strings.TrimSuffix(name, "-fm"), ".")
 	if len(nameParts) < 2 {
 		panic("procedure can only built from function with receiver")
 	}
@@ -24,31 +24,31 @@ func Procedure[Req any, Res any](procedure func(ctx context.Context, r *Req) (*R
 	serviceName := nameParts[len(nameParts)-2]
 	methodName := nameParts[len(nameParts)-1]
 
-	decodeFn := DecodeJSON[Req]
+	decodeFn := decodeJSON[Req]
 	if reflect.TypeOf(new(Req)).Elem().NumField() == 0 {
 		// skip decoding if there are no parameters.
 		decodeFn = func(r *http.Request, v *Req) error { return nil }
 	}
 
-	body, err := reflectBody(new(Req))
+	body, err := jsonMapping(new(Req))
 	if err != nil {
 		panic(err)
 	}
 
-	query, err := reflectQuery(new(Req))
+	query, err := queryMapping(new(Req))
 	if err != nil {
 		panic(err)
 	}
 
 	s := spec{
-		httpMethod:  http.MethodPost,
+		handlerType: procedureHandler,
 		serviceName: serviceName,
 		methodName:  methodName,
 		body:        body,
 		query:       query,
 	}
 
-	return procedureBuilder(func(mux *mux) (spec, http.HandlerFunc) {
+	return func(mux *mux) (spec, http.HandlerFunc) {
 		return s, func(w http.ResponseWriter, r *http.Request) {
 			var requestValue Req
 			if err := decodeFn(r, &requestValue); err != nil {
@@ -56,23 +56,16 @@ func Procedure[Req any, Res any](procedure func(ctx context.Context, r *Req) (*R
 				return
 			}
 
-			response, err := procedure(r.Context(), &requestValue)
+			response, err := fn(r.Context(), &requestValue)
 			if err != nil {
 				mux.errHandler(w, r, err)
 				return
 			}
 
-			if err := EncodeJSONResponse(w, r, http.StatusOK, response); err != nil {
+			if err := Encode(w, r, http.StatusOK, response); err != nil {
 				mux.errHandler(w, r, err)
 				return
 			}
 		}
-	})
-}
-
-// procedureBuilder is the implementation of Handler interface.
-type procedureBuilder func(mux *mux) (spec, http.HandlerFunc)
-
-func (b procedureBuilder) build(mux *mux) (spec, http.HandlerFunc) {
-	return b(mux)
+	}
 }
