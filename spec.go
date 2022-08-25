@@ -9,7 +9,8 @@ type spec struct {
 	httpMethod  string
 	serviceName string
 	methodName  string
-	params      map[string]string
+	body        map[string]string
+	query       map[string]string
 }
 
 func specHandler(spec []spec) http.HandlerFunc {
@@ -24,19 +25,12 @@ func specHandler(spec []spec) http.HandlerFunc {
 		endpoints := make([]endpoint, 0)
 
 		for _, s := range spec {
-			ns := endpoint{
+			endpoints = append(endpoints, endpoint{
 				Method: s.httpMethod,
 				Path:   strings.TrimSuffix(fullURL, "/") + "/" + s.serviceName + "." + s.methodName,
-			}
-
-			switch s.httpMethod {
-			case http.MethodGet:
-				ns.Query = s.params
-			case http.MethodPost:
-				ns.Body = s.params
-			}
-
-			endpoints = append(endpoints, ns)
+				Body:   s.body,
+				Query:  s.query,
+			})
 		}
 
 		_ = IndentJSONResponse(w, r, http.StatusOK, endpoints)

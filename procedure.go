@@ -30,31 +30,43 @@ func Procedure[Req any, Res any](procedure func(ctx context.Context, r *Req) (*R
 		decodeFn = func(r *http.Request, v *Req) error { return nil }
 	}
 
-	params, err := requestJSONReflection(new(Req))
+	body, err := reflectBody(new(Req))
 	if err != nil {
 		panic(err)
 	}
 
+	query, err := reflectQuery(new(Req))
+	if err != nil {
+		panic(err)
+	}
+
+	s := spec{
+		httpMethod:  http.MethodPost,
+		serviceName: serviceName,
+		methodName:  methodName,
+		body:        body,
+		query:       query,
+	}
+
 	return procedureBuilder(func(mux *mux) (spec, http.HandlerFunc) {
-		return spec{httpMethod: "POST", serviceName: serviceName, methodName: methodName, params: params},
-			func(w http.ResponseWriter, r *http.Request) {
-				var requestValue Req
-				if err := decodeFn(r, &requestValue); err != nil {
-					mux.errHandler(w, r, err)
-					return
-				}
-
-				response, err := procedure(r.Context(), &requestValue)
-				if err != nil {
-					mux.errHandler(w, r, err)
-					return
-				}
-
-				if err := EncodeJSONResponse(w, r, http.StatusOK, response); err != nil {
-					mux.errHandler(w, r, err)
-					return
-				}
+		return s, func(w http.ResponseWriter, r *http.Request) {
+			var requestValue Req
+			if err := decodeFn(r, &requestValue); err != nil {
+				mux.errHandler(w, r, err)
+				return
 			}
+
+			response, err := procedure(r.Context(), &requestValue)
+			if err != nil {
+				mux.errHandler(w, r, err)
+				return
+			}
+
+			if err := EncodeJSONResponse(w, r, http.StatusOK, response); err != nil {
+				mux.errHandler(w, r, err)
+				return
+			}
+		}
 	})
 }
 

@@ -2,7 +2,6 @@ package v1
 
 import (
 	"context"
-	"time"
 
 	"github.com/damejeras/ferry"
 )
@@ -20,7 +19,7 @@ type HelloWorldResponse struct {
 }
 
 type HelloNameRequest struct {
-	Name string `json:"name,omitempty"`
+	Name string `json:"name"`
 }
 
 type HelloNameResponse struct {
@@ -28,8 +27,7 @@ type HelloNameResponse struct {
 }
 
 type StreamGreetingsRequest struct {
-	Name string     `query:"name"`
-	Time *time.Time `query:"name"`
+	Name string `query:"name"`
 }
 
 type Greeting struct {

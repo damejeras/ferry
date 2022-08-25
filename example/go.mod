@@ -9,4 +9,9 @@ require (
 	github.com/go-chi/cors v1.2.1
 )
 
+require (
+	github.com/fatih/structtag v1.2.0 // indirect
+	github.com/mitchellh/reflectwalk v1.0.2 // indirect
+)
+
 replace github.com/damejeras/ferry => ../.
