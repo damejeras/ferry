@@ -36,7 +36,7 @@ func Procedure[Req any, Res any](fn func(ctx context.Context, r *Req) (*Res, err
 					return
 				}
 
-				if err := Respond(w, r, http.StatusOK, response); err != nil {
+				if err := Encode(w, r, http.StatusOK, response); err != nil {
 					m.errHandler(w, r, err)
 					return
 				}

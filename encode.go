@@ -9,8 +9,8 @@ import (
 	"strings"
 )
 
-// Respond encodes payload to JSON and writes it to http.ResponseWriter along with all required headers.
-func Respond(w http.ResponseWriter, r *http.Request, status int, payload any) error {
+// Encode encodes payload to JSON and writes it to http.ResponseWriter along with all required headers.
+func Encode(w http.ResponseWriter, r *http.Request, status int, payload any) error {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("marshal payload: %w", err)
@@ -19,8 +19,8 @@ func Respond(w http.ResponseWriter, r *http.Request, status int, payload any) er
 	return write(w, r, status, body)
 }
 
-// RespondPretty encodes payload to JSON with indentation and writes it to http.ResponseWriter along with all required headers.
-func RespondPretty(w http.ResponseWriter, r *http.Request, status int, payload any) error {
+// Respond encodes payload to indented JSON and writes it to http.ResponseWriter along with all required headers.
+func Respond(w http.ResponseWriter, r *http.Request, status int, payload any) error {
 	body, err := json.MarshalIndent(payload, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal payload: %w", err)
@@ -29,7 +29,7 @@ func RespondPretty(w http.ResponseWriter, r *http.Request, status int, payload a
 	return write(w, r, status, body)
 }
 
-func write(w http.ResponseWriter, r *http.Request, status int, payload []byte) error {
+func write(w http.ResponseWriter, r *http.Request, status int, body []byte) error {
 	var out io.Writer = w
 	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 		w.Header().Set("Content-Encoding", "gzip")
@@ -41,7 +41,7 @@ func write(w http.ResponseWriter, r *http.Request, status int, payload []byte) e
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
 
-	if _, err := out.Write(payload); err != nil {
+	if _, err := out.Write(body); err != nil {
 		return fmt.Errorf("write body: %w", err)
 	}
 

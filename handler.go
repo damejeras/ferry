@@ -47,7 +47,7 @@ func specHandler(handlers []Handler) http.HandlerFunc {
 			endpoints = append(endpoints, e)
 		}
 
-		_ = RespondPretty(w, r, http.StatusOK, endpoints)
+		_ = Respond(w, r, http.StatusOK, endpoints)
 	}
 }
 

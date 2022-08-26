@@ -28,7 +28,7 @@ func NewRouter(options ...Option) Router {
 	}
 
 	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		if err := Respond(w, r, http.StatusNotFound, ClientError{
+		if err := Encode(w, r, http.StatusNotFound, ClientError{
 			Code:    http.StatusNotFound,
 			Message: "not found",
 		}); err != nil {
@@ -37,7 +37,7 @@ func NewRouter(options ...Option) Router {
 	})
 
 	router.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
-		if err := Respond(w, r, http.StatusNotFound, ClientError{
+		if err := Encode(w, r, http.StatusNotFound, ClientError{
 			Code:    http.StatusMethodNotAllowed,
 			Message: "method not allowed",
 		}); err != nil {
@@ -94,7 +94,7 @@ func (m *mux) init() {
 		return
 	}
 
-	m.Router.Get("/", specHandler(m.handlers))
+	m.Router.Handle("/", specHandler(m.handlers))
 
 	m.ready = true
 }

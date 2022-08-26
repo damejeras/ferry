@@ -20,6 +20,12 @@ func decodeJSON[T any](r *http.Request, v *T) error {
 	}
 
 	if err := json.NewDecoder(io.LimitReader(r.Body, 1024*1024)).Decode(v); err != nil {
+		if err == io.EOF {
+			return ClientError{
+				Code:    http.StatusBadRequest,
+				Message: "empty request body",
+			}
+		}
 		return fmt.Errorf("decode request body: %w", err)
 	}
 
