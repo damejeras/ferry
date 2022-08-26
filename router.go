@@ -22,13 +22,13 @@ func NewRouter(options ...Option) Router {
 
 	m := &mux{
 		errHandler: DefaultErrorHandler,
-		spec:       make([]spec, 0),
+		handlers:   make([]Handler, 0),
 
 		Router: router,
 	}
 
 	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		if err := Encode(w, r, http.StatusNotFound, ClientError{
+		if err := Respond(w, r, http.StatusNotFound, ClientError{
 			Code:    http.StatusNotFound,
 			Message: "not found",
 		}); err != nil {
@@ -37,7 +37,7 @@ func NewRouter(options ...Option) Router {
 	})
 
 	router.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
-		if err := Encode(w, r, http.StatusNotFound, ClientError{
+		if err := Respond(w, r, http.StatusNotFound, ClientError{
 			Code:    http.StatusMethodNotAllowed,
 			Message: "method not allowed",
 		}); err != nil {
@@ -55,28 +55,29 @@ func NewRouter(options ...Option) Router {
 // mux is the implementation of Router interface.
 type mux struct {
 	errHandler ErrorHandler
-	spec       []spec
+	handlers   []Handler
 	mutex      sync.Mutex
 	ready      bool
 
 	chi.Router
 }
 
+// Register registers Procedure or Stream Handler to the Router.
+// Handler is being memorized to build the API spec on first request to the Router.
 func (m *mux) Register(h Handler) {
-	s, handle := h(m)
-
-	switch s.handlerType {
+	switch h.handlerType {
 	case procedureHandler:
-		m.Post(s.path(), handle)
-		m.spec = append(m.spec, s)
+		m.Post(h.serviceMeta.path(), h.builder(m))
 	case streamHandler:
-		m.Get(s.path(), handle)
-		m.spec = append(m.spec, s)
+		m.Get(h.serviceMeta.path(), h.builder(m))
 	default:
 		return
 	}
+
+	m.handlers = append(m.handlers, h)
 }
 
+// ServeHTTP is the implementation of http.Handler interface.
 func (m *mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !m.ready {
 		m.init()
@@ -85,7 +86,7 @@ func (m *mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	m.Router.ServeHTTP(w, r)
 }
 
-// init initializes spec handler on first request to the router.
+// init initializes spec handler.
 func (m *mux) init() {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -93,6 +94,7 @@ func (m *mux) init() {
 		return
 	}
 
-	m.Router.Get("/", specHandler(m.spec))
+	m.Router.Get("/", specHandler(m.handlers))
+
 	m.ready = true
 }

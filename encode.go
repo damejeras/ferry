@@ -9,8 +9,8 @@ import (
 	"strings"
 )
 
-// Encode encodes payload to JSON and writes it to http.ResponseWriter along with all required headers.
-func Encode(w http.ResponseWriter, r *http.Request, status int, payload any) error {
+// Respond encodes payload to JSON and writes it to http.ResponseWriter along with all required headers.
+func Respond(w http.ResponseWriter, r *http.Request, status int, payload any) error {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("marshal payload: %w", err)
@@ -19,9 +19,8 @@ func Encode(w http.ResponseWriter, r *http.Request, status int, payload any) err
 	return write(w, r, status, body)
 }
 
-// IndentEncode encodes payload to formatted JSON and writes it to http.ResponseWriter
-// along with all required headers.
-func IndentEncode(w http.ResponseWriter, r *http.Request, status int, payload any) error {
+// RespondPretty encodes payload to JSON with indentation and writes it to http.ResponseWriter along with all required headers.
+func RespondPretty(w http.ResponseWriter, r *http.Request, status int, payload any) error {
 	body, err := json.MarshalIndent(payload, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal payload: %w", err)
