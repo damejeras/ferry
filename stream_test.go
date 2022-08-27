@@ -10,18 +10,6 @@ import (
 	"time"
 )
 
-type testService struct{}
-
-type empty struct{}
-
-type queryRequest struct {
-	Value string `query:"value"`
-}
-
-type testPayload struct {
-	Value string `json:"value"`
-}
-
 func (s testService) EmptyStreamForSixSeconds(ctx context.Context, _ *empty) (<-chan Event[empty], error) {
 	c := make(chan Event[empty])
 
