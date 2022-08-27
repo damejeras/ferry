@@ -86,7 +86,7 @@ func (m *mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	m.Router.ServeHTTP(w, r)
 }
 
-// init initializes spec handler.
+// init initializes and registers spec handler.
 func (m *mux) init() {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()

@@ -32,7 +32,7 @@ func buildMeta(function, request interface{}) (serviceMeta, error) {
 	}
 
 	meta := serviceMeta{
-		serviceName: nameParts[len(nameParts)-2],
+		serviceName: strings.TrimPrefix(nameParts[len(nameParts)-2], "*"),
 		methodName:  nameParts[len(nameParts)-1],
 	}
 

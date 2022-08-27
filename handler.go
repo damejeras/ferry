@@ -20,7 +20,7 @@ type Handler struct {
 	builder     func(m *mux) http.HandlerFunc
 }
 
-// specHandler builds handler for the API.
+// specHandler builds http.HandlerFunc for the API spec.
 func specHandler(handlers []Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		endpointURL := "http://"

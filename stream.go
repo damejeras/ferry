@@ -16,7 +16,8 @@ type Event[P any] struct {
 }
 
 // Stream will return Handler which can be used to register SSE stream in Router.
-// This function call will panic if provided function does not have a receiver or Request structure is not parsable.
+// Stream function MUST close channel when context is cancelled. Handler will panic if context is cancelled and channel is not closed.
+// Provided argument MUST be a function which has a receiver.
 func Stream[Req any, Msg any](fn func(ctx context.Context, r *Req) (<-chan Event[Msg], error)) Handler {
 	payloadType := reflect.TypeOf(new(Msg)).Elem().Name()
 
@@ -78,11 +79,17 @@ func Stream[Req any, Msg any](fn func(ctx context.Context, r *Req) (<-chan Event
 							m.errHandler(w, r, fmt.Errorf("write message: %w", err))
 							return
 						}
-					// keep connection alive
 					case <-time.After(5 * time.Second):
-						if _, err := fmt.Fprintf(w, "event: keep-alive\n\n"); err != nil {
-							m.errHandler(w, r, fmt.Errorf("write keep-alive: %w", err))
-							return
+						select {
+						case <-ctx.Done():
+							// panic, channel MUST be closed when context is cancelled
+							panic(fmt.Sprintf("%q stream channel is not closed", meta.methodName))
+						default:
+							// keep connection alive
+							if _, err := fmt.Fprintf(w, "event: keep-alive\n\n"); err != nil {
+								m.errHandler(w, r, fmt.Errorf("write keep-alive: %w", err))
+								return
+							}
 						}
 					}
 
