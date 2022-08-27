@@ -46,7 +46,7 @@ Now you have to create `ferry.Router` and register your `HelloWorld` procedure:
 ```go
 v1 := ferry.NewRouter()
 greetSvc := greet.NewService()
-v1.Register(Procedure(greetSvc.HelloWorld))
+v1.Register(ferry.Procedure(greetSvc.HelloWorld))
 http.ListenAndServe(":7777", v1)
 ```
 `v1` here is also `chi.Router`, so you can add middleware or mount it to some other router.
