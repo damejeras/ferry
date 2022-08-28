@@ -50,7 +50,7 @@ func Stream[Req any, Msg any](fn func(ctx context.Context, r *Req) (<-chan Event
 				w.Header().Set("Cache-Control", "no-cache")
 				w.Header().Set("Connection", "keep-alive")
 
-				ctx := r.Context()
+				ctx := createContext(w, r)
 				events, err := fn(ctx, &reqValue)
 				if err != nil {
 					m.errHandler(w, r, err)
