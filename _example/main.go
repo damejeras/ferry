@@ -23,6 +23,8 @@ func main() {
 				ferry.DefaultErrorHandler(w, r, err)
 			}
 		}),
+		// enable service discovery endpoint on "/" path.
+		ferry.WithServiceDiscovery,
 	)
 
 	// All the modifications to Router should be made before registering handlers.
@@ -36,18 +38,20 @@ func main() {
 	// This returns GreetService implementation from api/v1/greet.go. GreetService is the description of our API.
 	// The implementation is done in internal/greet/service.go
 	greetSvc := greet.NewService()
-	// POST http://localhost:7777/api/v1/GreetService.HelloWorld
-	// the endpoint name is being reflected from the GreetService in api/v1/greet.go
-	v1.Register(ferry.Procedure(greetSvc.HelloWorld))
-	// POST http://localhost:7777/api/v1/GreetService.HelloName
-	// Content-Type: application/json
-	// { "name": "Joe" }
-	// the endpoint name is being reflected from the GreetService in api/v1/greet.go
-	v1.Register(ferry.Procedure(greetSvc.HelloName))
-	// GET http://localhost:7777/api/v1/GreetService.StreamGreetings
-	// This will start streaming SSE events
-	// the endpoint name is being reflected from the GreetService in api/v1/greet.go
-	v1.Register(ferry.Stream(greetSvc.StreamGreetings))
+	v1.Register(
+		// POST http://localhost:7777/api/v1/GreetService.HelloWorld
+		// the endpoint name is being reflected from the GreetService in api/v1/greet.go
+		ferry.Procedure(greetSvc.HelloWorld),
+		// POST http://localhost:7777/api/v1/GreetService.HelloName
+		// Content-Type: application/json
+		// { "name": "Joe" }
+		// the endpoint name is being reflected from the GreetService in api/v1/greet.go
+		ferry.Procedure(greetSvc.HelloName),
+		// GET http://localhost:7777/api/v1/GreetService.StreamGreetings
+		// This will start streaming SSE events
+		// the endpoint name is being reflected from the GreetService in api/v1/greet.go
+		ferry.Stream(greetSvc.StreamGreetings),
+	)
 
 	router := chi.NewRouter()
 	router.Mount("/api/v1", v1)
