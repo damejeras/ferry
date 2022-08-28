@@ -1,6 +1,7 @@
 package ferry
 
 import (
+	"fmt"
 	"net/http"
 	"sync"
 
@@ -22,7 +23,7 @@ func NewRouter(options ...Option) Router {
 
 	m := &mux{
 		errHandler: DefaultErrorHandler,
-		handlers:   make([]Handler, 0),
+		handlers:   make(map[string]Handler),
 
 		Router: router,
 	}
@@ -55,7 +56,7 @@ func NewRouter(options ...Option) Router {
 // mux is the implementation of Router interface.
 type mux struct {
 	errHandler ErrorHandler
-	handlers   []Handler
+	handlers   map[string]Handler
 	mutex      sync.Mutex
 	ready      bool
 
@@ -67,6 +68,15 @@ type mux struct {
 // Register registers Procedure or Stream handlers to the Router.
 func (m *mux) Register(handlers ...Handler) {
 	for _, h := range handlers {
+		if exists, ok := m.handlers[h.serviceMeta.methodName]; ok {
+			panic(fmt.Sprintf(
+				"can not register %q, because %q already exists; functions must not share %q",
+				h.serviceMeta.reflectedName,
+				exists.serviceMeta.reflectedName,
+				h.serviceMeta.methodName,
+			))
+		}
+
 		switch h.handlerType {
 		case procedureHandler:
 			m.Post(h.serviceMeta.path(), h.builder(m))
@@ -76,7 +86,7 @@ func (m *mux) Register(handlers ...Handler) {
 			continue
 		}
 
-		m.handlers = append(m.handlers, h)
+		m.handlers[h.serviceMeta.methodName] = h
 	}
 }
 

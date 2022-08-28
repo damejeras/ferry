@@ -19,26 +19,13 @@ func (t testService) TestProcedureWithParams(ctx context.Context, r *jsonRequest
 }
 
 func TestProcedure(t *testing.T) {
-	t.Run("should panic if procedure function does not have receiver", func(t *testing.T) {
-		t.Parallel()
-		defer func() {
-			if r := recover(); r == nil {
-				t.Errorf("The code did not panic")
-			}
-		}()
-
-		Procedure(func(ctx context.Context, r *empty) (*empty, error) {
-			return &empty{}, nil
-		})
-	})
-
 	t.Run("returns response without request params", func(t *testing.T) {
 		t.Parallel()
 		router := NewRouter()
 		svc := testService{}
 		router.Register(Procedure(svc.TestProcedureWithoutParams))
 		rr := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/testService.TestProcedureWithoutParams", nil)
+		r := httptest.NewRequest("POST", "/TestProcedureWithoutParams", nil)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 		r = r.WithContext(ctx)
@@ -62,7 +49,7 @@ func TestProcedure(t *testing.T) {
 			t.Errorf("unexpected error: %v", err)
 		}
 		rr := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/testService.TestProcedureWithParams", bytes.NewReader(payload))
+		r := httptest.NewRequest("POST", "/TestProcedureWithParams", bytes.NewReader(payload))
 		r.Header.Set("Content-Type", "application/json")
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
@@ -91,7 +78,7 @@ func TestProcedure(t *testing.T) {
 		svc := testService{}
 		router.Register(Procedure(svc.TestProcedureWithParams))
 		rr := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/testService.TestProcedureWithParams", nil)
+		r := httptest.NewRequest("POST", "/TestProcedureWithParams", nil)
 		r.Header.Set("Content-Type", "application/json")
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()

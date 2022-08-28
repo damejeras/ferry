@@ -38,14 +38,14 @@ func TestRouter(t *testing.T) {
 		expected := `[
   {
     "method": "POST",
-    "path": "http://example.com/testService.TestProcedureWithParams",
+    "path": "http://example.com/TestProcedureWithParams",
     "body": {
       "value": "string"
     }
   },
   {
     "method": "GET",
-    "path": "http://example.com/testService.StreamOneEvent",
+    "path": "http://example.com/StreamOneEvent",
     "query": {
       "value": "string"
     }

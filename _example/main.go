@@ -39,17 +39,17 @@ func main() {
 	// The implementation is done in internal/greet/service.go
 	greetSvc := greet.NewService()
 	v1.Register(
-		// POST http://localhost:7777/api/v1/GreetService.HelloWorld
-		// the endpoint name is being reflected from the GreetService in api/v1/greet.go
+		// POST http://localhost:7777/api/v1/HelloWorld
+		// the endpoint path is reflected from function name.
 		ferry.Procedure(greetSvc.HelloWorld),
-		// POST http://localhost:7777/api/v1/GreetService.HelloName
+		// POST http://localhost:7777/api/v1/HelloName
 		// Content-Type: application/json
 		// { "name": "Joe" }
-		// the endpoint name is being reflected from the GreetService in api/v1/greet.go
+		// the endpoint path is reflected from function name.
 		ferry.Procedure(greetSvc.HelloName),
-		// GET http://localhost:7777/api/v1/GreetService.StreamGreetings
+		// GET http://localhost:7777/api/v1/StreamGreetings
 		// This will start streaming SSE events
-		// the endpoint name is being reflected from the GreetService in api/v1/greet.go
+		// the endpoint path is reflected from function name.
 		ferry.Stream(greetSvc.StreamGreetings),
 	)
 
