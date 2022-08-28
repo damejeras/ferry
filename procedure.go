@@ -30,7 +30,7 @@ func Procedure[Req any, Res any](fn func(ctx context.Context, r *Req) (*Res, err
 					return
 				}
 
-				response, err := fn(r.Context(), &requestValue)
+				response, err := fn(createContext(w, r), &requestValue)
 				if err != nil {
 					m.errHandler(w, r, err)
 					return
