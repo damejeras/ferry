@@ -11,7 +11,7 @@ import (
 // This router is intended to be mounted on regular chi Router.
 type Router interface {
 	// Register registers Procedure or Stream Handler.
-	Register(Handler)
+	Register(...Handler)
 
 	chi.Router
 }
@@ -59,27 +59,30 @@ type mux struct {
 	mutex      sync.Mutex
 	ready      bool
 
+	serviceDiscovery bool
+
 	chi.Router
 }
 
-// Register registers Procedure or Stream Handler to the Router.
-// Handler is being memorized to build the API spec on first request to the Router.
-func (m *mux) Register(h Handler) {
-	switch h.handlerType {
-	case procedureHandler:
-		m.Post(h.serviceMeta.path(), h.builder(m))
-	case streamHandler:
-		m.Get(h.serviceMeta.path(), h.builder(m))
-	default:
-		return
-	}
+// Register registers Procedure or Stream handlers to the Router.
+func (m *mux) Register(handlers ...Handler) {
+	for _, h := range handlers {
+		switch h.handlerType {
+		case procedureHandler:
+			m.Post(h.serviceMeta.path(), h.builder(m))
+		case streamHandler:
+			m.Get(h.serviceMeta.path(), h.builder(m))
+		default:
+			continue
+		}
 
-	m.handlers = append(m.handlers, h)
+		m.handlers = append(m.handlers, h)
+	}
 }
 
 // ServeHTTP is the implementation of http.Handler interface.
 func (m *mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if !m.ready {
+	if m.serviceDiscovery && !m.ready {
 		m.init()
 	}
 

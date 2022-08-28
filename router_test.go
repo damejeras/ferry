@@ -25,7 +25,7 @@ func TestRouter(t *testing.T) {
 	t.Run("creates api spec", func(t *testing.T) {
 		t.Parallel()
 		svc := testService{}
-		router := NewRouter()
+		router := NewRouter(WithServiceDiscovery)
 
 		router.Register(Procedure(svc.TestProcedureWithParams))
 		router.Register(Stream(svc.StreamOneEvent))
