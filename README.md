@@ -56,7 +56,7 @@ In this case that would be `GET` to `/`, if you visit it you get the response
 [
   {
     "method": "POST",
-    "path": "http://example.com/GreetService.HelloWorld",
+    "path": "http://example.com/HelloWorld"
   }
 ]
 ```

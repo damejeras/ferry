@@ -21,7 +21,7 @@ type Handler struct {
 }
 
 // specHandler builds http.HandlerFunc for the API spec.
-func specHandler(handlers []Handler) http.HandlerFunc {
+func specHandler(handlers map[string]Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		endpointURL := "http://"
 		if r.TLS != nil {

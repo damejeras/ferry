@@ -88,7 +88,7 @@ func TestStream(t *testing.T) {
 		router.Register(Stream(svc.EmptyStreamForSixSeconds))
 		rr := httptest.NewRecorder()
 
-		router.ServeHTTP(rr, httptest.NewRequest("GET", "/testService.EmptyStreamForSixSeconds", nil))
+		router.ServeHTTP(rr, httptest.NewRequest("GET", "/EmptyStreamForSixSeconds", nil))
 		if rr.Code != http.StatusOK {
 			t.Errorf("expected status code %d, got %d", http.StatusOK, rr.Code)
 		}
@@ -115,7 +115,7 @@ event: keep-alive
 		svc := testService{}
 		router.Register(Stream(svc.StreamForSixSeconds))
 		rr := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/testService.StreamForSixSeconds?value=test_data", nil)
+		r := httptest.NewRequest("GET", "/StreamForSixSeconds?value=test_data", nil)
 		// ctx, cancel := context.WithTimeout(context.Background(), time.Second*6)
 		// defer cancel()
 		// r = r.WithContext(ctx)
@@ -169,7 +169,7 @@ data: {"value":"test_data"}
 		svc := testService{}
 		router.Register(Stream(svc.LeakyStream))
 		rr := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/testService.LeakyStream", nil)
+		r := httptest.NewRequest("GET", "/LeakyStream", nil)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 		r = r.WithContext(ctx)
@@ -190,7 +190,7 @@ data: {"value":"test_data"}
 		router.Register(Stream(svc.StreamOneEvent))
 		rr := httptest.NewRecorder()
 
-		router.ServeHTTP(rr, httptest.NewRequest("GET", "/testService.StreamOneEvent?value=test", nil))
+		router.ServeHTTP(rr, httptest.NewRequest("GET", "/StreamOneEvent?value=test", nil))
 		if rr.Code != http.StatusOK {
 			t.Errorf("expected status code %d, got %d", http.StatusOK, rr.Code)
 		}
