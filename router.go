@@ -1,9 +1,7 @@
 package ferry
 
 import (
-	"fmt"
 	"net/http"
-	"sync"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -23,9 +21,7 @@ func NewRouter(options ...Option) Router {
 
 	m := &mux{
 		errHandler: DefaultErrorHandler,
-		handlers:   make(map[string]Handler),
-
-		Router: router,
+		Router:     router,
 	}
 
 	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
@@ -56,11 +52,6 @@ func NewRouter(options ...Option) Router {
 // mux is the implementation of Router interface.
 type mux struct {
 	errHandler ErrorHandler
-	handlers   map[string]Handler
-	mutex      sync.Mutex
-	ready      bool
-
-	serviceDiscovery bool
 
 	chi.Router
 }
@@ -68,46 +59,15 @@ type mux struct {
 // Register registers Procedure or Stream handlers to the Router.
 func (m *mux) Register(handlers ...Handler) {
 	for _, h := range handlers {
-		if exists, ok := m.handlers[h.serviceMeta.methodName]; ok {
-			panic(fmt.Sprintf(
-				"can not register %q, because %q already exists; functions must not share %q",
-				h.serviceMeta.reflectedName,
-				exists.serviceMeta.reflectedName,
-				h.serviceMeta.methodName,
-			))
-		}
+		h.build(m)
 
-		switch h.handlerType {
-		case procedureHandler:
-			m.Post(h.serviceMeta.path(), h.builder(m))
-		case streamHandler:
-			m.Get(h.serviceMeta.path(), h.builder(m))
+		switch handler := h.(type) {
+		case *procedureHandler:
+			m.Method(http.MethodPost, handler.serviceMeta.path(), handler)
+		case *streamHandler:
+			m.Method(http.MethodGet, handler.serviceMeta.path(), handler)
 		default:
 			continue
 		}
-
-		m.handlers[h.serviceMeta.methodName] = h
 	}
-}
-
-// ServeHTTP is the implementation of http.Handler interface.
-func (m *mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if m.serviceDiscovery && !m.ready {
-		m.init()
-	}
-
-	m.Router.ServeHTTP(w, r)
-}
-
-// init initializes and registers spec handler.
-func (m *mux) init() {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-	if m.ready {
-		return
-	}
-
-	m.Router.Handle("/", specHandler(m.handlers))
-
-	m.ready = true
 }

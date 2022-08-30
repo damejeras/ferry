@@ -23,8 +23,6 @@ func main() {
 				ferry.DefaultErrorHandler(w, r, err)
 			}
 		}),
-		// enable service discovery endpoint on "/" path.
-		ferry.WithServiceDiscovery,
 	)
 
 	// All the modifications to Router should be made before registering handlers.
@@ -54,7 +52,9 @@ func main() {
 	)
 
 	router := chi.NewRouter()
-	router.Mount("/api/v1", v1)
+	router.Mount("/api/v1/GreetService", v1)
+	// Must be called last, because ferry.ServiceDiscovery is walking router paths.
+	router.Handle("/api/v1", ferry.ServiceDiscovery(router))
 
 	if err := http.ListenAndServe(":7777", router); err != nil {
 		log.Fatal(err)

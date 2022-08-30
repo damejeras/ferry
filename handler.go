@@ -2,58 +2,29 @@ package ferry
 
 import (
 	"net/http"
-	"strings"
-)
-
-type handlerType int
-
-const (
-	procedureHandler handlerType = iota
-	streamHandler
 )
 
 // Handler can only be acquired from helper methods (Procedure, Stream).
-// It provides type safety when defining API.
-type Handler struct {
-	handlerType handlerType
-	serviceMeta serviceMeta
-	builder     func(m *mux) http.HandlerFunc
+type Handler interface {
+	http.Handler
+
+	build(*mux)
 }
 
-// specHandler builds http.HandlerFunc for the API spec.
-func specHandler(handlers map[string]Handler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		endpointURL := "http://"
-		if r.TLS != nil {
-			endpointURL = "https://"
-		}
-		endpointURL += r.Host + r.URL.Path
-
-		endpoints := make([]endpoint, 0)
-		for i := range handlers {
-			e := endpoint{
-				Path:  strings.TrimSuffix(endpointURL, "/") + handlers[i].serviceMeta.path(),
-				Body:  handlers[i].serviceMeta.body,
-				Query: handlers[i].serviceMeta.query,
-			}
-
-			switch handlers[i].handlerType {
-			case procedureHandler:
-				e.Method = "POST"
-			case streamHandler:
-				e.Method = "GET"
-			}
-
-			endpoints = append(endpoints, e)
-		}
-
-		_ = Respond(w, r, http.StatusOK, endpoints)
-	}
+type procedureHandler struct {
+	serviceMeta    serviceMeta
+	handlerBuilder func(m *mux) http.HandlerFunc
+	httpHandler    func(http.ResponseWriter, *http.Request)
 }
 
-type endpoint struct {
-	Method string            `json:"method"`
-	Path   string            `json:"path"`
-	Body   map[string]string `json:"body,omitempty"`
-	Query  map[string]string `json:"query,omitempty"`
+func (h *procedureHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) { h.httpHandler(w, r) }
+func (h *procedureHandler) build(m *mux)                                     { h.httpHandler = h.handlerBuilder(m) }
+
+type streamHandler struct {
+	serviceMeta    serviceMeta
+	handlerBuilder func(m *mux) http.HandlerFunc
+	httpHandler    func(http.ResponseWriter, *http.Request)
 }
+
+func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) { h.httpHandler(w, r) }
+func (h *streamHandler) build(m *mux)                                     { h.httpHandler = h.handlerBuilder(m) }

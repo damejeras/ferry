@@ -19,10 +19,9 @@ func Procedure[Req any, Res any](fn func(ctx context.Context, r *Req) (*Res, err
 		decodeFn = func(r *http.Request, v *Req) error { return nil }
 	}
 
-	return Handler{
-		handlerType: procedureHandler,
+	return &procedureHandler{
 		serviceMeta: meta,
-		builder: func(m *mux) http.HandlerFunc {
+		handlerBuilder: func(m *mux) http.HandlerFunc {
 			return func(w http.ResponseWriter, r *http.Request) {
 				var requestValue Req
 				if err := decodeFn(r, &requestValue); err != nil {
