@@ -44,22 +44,55 @@ func (s *service) HelloWorld(_ context.Context, _ *v1.HelloWorldRequest) (*v1.He
 ```
 Now you have to create `ferry.Router` and register your `HelloWorld` procedure:
 ```go
-v1 := ferry.NewRouter()
+// create ferry service router
+v1greet:= ferry.NewRouter()
+// create instance of your service
 greetSvc := greet.NewService()
+// register your service method
 v1.Register(ferry.Procedure(greetSvc.HelloWorld))
-http.ListenAndServe(":7777", v1)
+
+// create root router
+chiRouter := chi.NewRouter()
+// mount your ferry service router
+chiRouter.Mount("/api/v1/GreetService", v1greet)
+// enable service discovery (optional)
+chiRouter.Handle("/api/v1", ferry.ServiceDiscovery(router))
+// run your server
+http.ListenAndServe(":7777", chiRouter)
 ```
-`v1` here is also `chi.Router`, so you can add middleware or mount it to some other router.
-`ferry` is using reflection and generics on your API spec to create routes. It is also providing simple API discovery through root path of the router.
-In this case that would be `GET` to `/`, if you visit it you get the response
+
+That's it. Because `ferry.Router` has `chi.Router` embedded you can use all the nice things `chi` provides.
+
+`ferry`'s service discovery is meant to be read by humans first. It looks like this:
 ```json
 [
   {
     "method": "POST",
-    "path": "http://example.com/HelloWorld"
+    "path": "http://localhost:7777/api/v1/GreetService/HelloWorld"
   }
 ]
 ```
 
+Service discovery can also print request parameters if your request has properties with `query` or `json` tags.
+Try changing `HelloWorldRequest` in your spec to:
+```go
+type HelloWorldRequest struct{
+  Name string `json:"name"`
+}
+```
+Now service discovery should look like this:
+```json
+[
+  {
+    "method": "POST",
+    "path": "http://localhost:7777/api/v1/GreetService/HelloWorld",
+    "body": {
+      "name": "string"
+    }
+  }
+]
+```
 
+### Server-Sent Events
 
+`ferry` also supports SSE streams. To learn more, check out [example application](https://github.com/damejeras/ferry/tree/main/_example).

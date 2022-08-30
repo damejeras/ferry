@@ -7,7 +7,3 @@ func WithErrorHandler(handler ErrorHandler) Option {
 		m.errHandler = handler
 	}
 }
-
-func WithServiceDiscovery(m *mux) {
-	m.serviceDiscovery = true
-}

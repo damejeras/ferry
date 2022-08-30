@@ -26,10 +26,9 @@ func Stream[Req any, Msg any](fn func(ctx context.Context, r *Req) (<-chan Event
 		panic(err)
 	}
 
-	return Handler{
-		handlerType: streamHandler,
+	return &streamHandler{
 		serviceMeta: meta,
-		builder: func(m *mux) http.HandlerFunc {
+		handlerBuilder: func(m *mux) http.HandlerFunc {
 			return func(w http.ResponseWriter, r *http.Request) {
 				flusher, ok := w.(http.Flusher)
 				if !ok {

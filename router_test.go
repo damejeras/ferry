@@ -1,10 +1,5 @@
 package ferry
 
-import (
-	"net/http/httptest"
-	"testing"
-)
-
 type testService struct{}
 
 type testPayload struct {
@@ -20,39 +15,3 @@ type jsonRequest struct {
 }
 
 type empty struct{}
-
-func TestRouter(t *testing.T) {
-	t.Run("creates api spec", func(t *testing.T) {
-		t.Parallel()
-		svc := testService{}
-		router := NewRouter(WithServiceDiscovery)
-
-		router.Register(Procedure(svc.TestProcedureWithParams))
-		router.Register(Stream(svc.StreamOneEvent))
-
-		rr := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/", nil)
-
-		router.ServeHTTP(rr, r)
-		content := rr.Body.Bytes()
-		expected := `[
-  {
-    "method": "POST",
-    "path": "http://example.com/TestProcedureWithParams",
-    "body": {
-      "value": "string"
-    }
-  },
-  {
-    "method": "GET",
-    "path": "http://example.com/StreamOneEvent",
-    "query": {
-      "value": "string"
-    }
-  }
-]`
-		if string(content) != expected {
-			t.Errorf("unexpected response, got %s", content)
-		}
-	})
-}
