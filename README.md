@@ -63,7 +63,9 @@ http.ListenAndServe(":7777", chiRouter)
 
 That's it. Because `ferry.Router` has `chi.Router` embedded you can use all the nice things `chi` provides.
 
-`ferry`'s service discovery is meant to be read by humans first. It looks like this:
+### Service Discovery
+
+`ferry`'s service discovery is meant to be read by humans first. It is formatted like this:
 ```json
 [
   {
