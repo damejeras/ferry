@@ -29,7 +29,7 @@ func Stream[Req any, Msg any](fn func(ctx context.Context, r *Req) (<-chan Event
 
 	return &streamHandler{
 		meta: mt,
-		handlerBuilder: func(m *mux) http.HandlerFunc {
+		builder: func(m *mux) http.HandlerFunc {
 			return func(w http.ResponseWriter, r *http.Request) {
 				flusher, ok := w.(http.Flusher)
 				if !ok {
