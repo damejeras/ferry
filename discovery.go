@@ -1,6 +1,7 @@
 package ferry
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -33,13 +34,14 @@ func ServiceDiscovery(router chi.Router) http.HandlerFunc {
 	})
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		hostURL := "http://"
+		scheme := "http://"
 		if r.TLS != nil {
-			hostURL = "https://"
+			scheme = "https://"
 		}
-		hostURL += r.Host
 
-		_ = Respond(w, r, http.StatusOK, prependHost(hostURL, endpoints))
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "  ")
+		enc.Encode(prependHost(scheme+r.Host, endpoints))
 	}
 }
 

@@ -2,30 +2,28 @@ package ferry
 
 import "net/http"
 
-// DefaultErrorHandler knows how to work with ClientError and converts other types of error to ServerError
-var DefaultErrorHandler ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
-	clientErr, ok := err.(ClientError)
-	if ok {
-		_ = Encode(w, r, clientErr.Code, clientErr)
-	} else {
-		_ = Encode(w, r, http.StatusInternalServerError, ServerError{"internal server error"})
-	}
-}
-
-// ErrorHandler can be used to handle custom errors. Default is DefaultErrorHandler.
+// ErrorHandler handles errors in Handler methods. Can be assigned to router with WithErrorHandler option.
 type ErrorHandler func(w http.ResponseWriter, r *http.Request, err error)
 
-// ServerError is used for server's error responses.
-type ServerError struct {
-	Message string `json:"error"`
-}
-
-// ClientError can be used for client's error responses.
+// ClientError encapsulates error with HTTP status code. Can be used to return error to client.
 type ClientError struct {
 	Code    int    `json:"-"`
 	Message string `json:"error"`
 }
 
-func (e ServerError) Error() string { return e.Message }
-
 func (e ClientError) Error() string { return e.Message }
+
+// DefaultErrorHandler knows how to encode ClientError.
+// In case of unexpected error it returns 500 Internal Server Error.
+var DefaultErrorHandler ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+	switch tErr := err.(type) {
+	case ClientError:
+		Encode(w, r, tErr.Code, tErr)
+	default:
+		Encode(w, r, http.StatusInternalServerError, serverError{"internal server error"})
+	}
+}
+
+type serverError struct {
+	Message string `json:"error"`
+}

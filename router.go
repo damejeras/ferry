@@ -24,23 +24,17 @@ func NewRouter(options ...func(m *mux)) Router {
 		Router:     router,
 	}
 
-	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
+	notFound := func(w http.ResponseWriter, r *http.Request) {
 		if err := Encode(w, r, http.StatusNotFound, ClientError{
 			Code:    http.StatusNotFound,
 			Message: "not found",
 		}); err != nil {
 			m.errHandler(w, r, err)
 		}
-	})
+	}
 
-	router.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
-		if err := Encode(w, r, http.StatusNotFound, ClientError{
-			Code:    http.StatusMethodNotAllowed,
-			Message: "method not allowed",
-		}); err != nil {
-			m.errHandler(w, r, err)
-		}
-	})
+	router.MethodNotAllowed(notFound)
+	router.NotFound(notFound)
 
 	for i := range options {
 		options[i](m)

@@ -16,20 +16,6 @@ func Encode(w http.ResponseWriter, r *http.Request, status int, payload any) err
 		return fmt.Errorf("marshal payload: %w", err)
 	}
 
-	return write(w, r, status, body)
-}
-
-// Respond encodes payload to indented JSON and writes it to http.ResponseWriter along with all required headers.
-func Respond(w http.ResponseWriter, r *http.Request, status int, payload any) error {
-	body, err := json.MarshalIndent(payload, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal payload: %w", err)
-	}
-
-	return write(w, r, status, body)
-}
-
-func write(w http.ResponseWriter, r *http.Request, status int, body []byte) error {
 	var out io.Writer = w
 	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 		w.Header().Set("Content-Encoding", "gzip")
