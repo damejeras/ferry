@@ -49,7 +49,7 @@ v1greet:= ferry.NewRouter()
 // create instance of your service
 greetSvc := greet.NewService()
 // register your service method
-v1.Register(ferry.Procedure(greetSvc.HelloWorld))
+v1greet.Register(ferry.Procedure(greetSvc.HelloWorld))
 
 // create root router
 chiRouter := chi.NewRouter()
