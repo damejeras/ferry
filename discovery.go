@@ -6,37 +6,40 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// ServiceDiscovery walks chi.Router routing tree and creates http.HandlerFunc
+// that will return list of ferry endpoints along with their metadata.
 func ServiceDiscovery(router chi.Router) http.HandlerFunc {
 	endpoints := make([]endpoint, 0)
 
 	chi.Walk(router, func(method, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
+		var m meta
 		switch h := handler.(type) {
 		case *procedureHandler:
-			endpoints = append(endpoints, endpoint{
-				Method: method,
-				Path:   route,
-				Body:   h.serviceMeta.body,
-				Query:  h.serviceMeta.query,
-			})
+			m = h.meta
 		case *streamHandler:
-			endpoints = append(endpoints, endpoint{
-				Method: method,
-				Path:   route,
-				Body:   h.serviceMeta.body,
-				Query:  h.serviceMeta.query,
-			})
+			m = h.meta
+		default:
+			return nil
 		}
+
+		endpoints = append(endpoints, endpoint{
+			Method: method,
+			Path:   route,
+			Body:   m.body,
+			Query:  m.query,
+		})
+
 		return nil
 	})
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		endpointURL := "http://"
+		hostURL := "http://"
 		if r.TLS != nil {
-			endpointURL = "https://"
+			hostURL = "https://"
 		}
-		endpointURL += r.Host
+		hostURL += r.Host
 
-		_ = Respond(w, r, http.StatusOK, prependHost(endpointURL, endpoints))
+		_ = Respond(w, r, http.StatusOK, prependHost(hostURL, endpoints))
 	}
 }
 

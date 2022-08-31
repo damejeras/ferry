@@ -16,7 +16,7 @@ type Router interface {
 }
 
 // NewRouter creates a Router instance. Router is the extension of chi.Router.
-func NewRouter(options ...Option) Router {
+func NewRouter(options ...func(m *mux)) Router {
 	router := chi.NewRouter()
 
 	m := &mux{
@@ -58,14 +58,14 @@ type mux struct {
 
 // Register registers Procedure or Stream handlers to the Router.
 func (m *mux) Register(handlers ...Handler) {
-	for _, h := range handlers {
-		h.build(m)
+	for _, handler := range handlers {
+		handler.build(m)
 
-		switch handler := h.(type) {
+		switch h := handler.(type) {
 		case *procedureHandler:
-			m.Method(http.MethodPost, handler.serviceMeta.path(), handler)
+			m.Method(http.MethodPost, "/"+h.meta.name, handler)
 		case *streamHandler:
-			m.Method(http.MethodGet, handler.serviceMeta.path(), handler)
+			m.Method(http.MethodGet, "/"+h.meta.name, handler)
 		default:
 			continue
 		}
