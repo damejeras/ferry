@@ -56,7 +56,7 @@ chiRouter := chi.NewRouter()
 // mount your ferry service router
 chiRouter.Mount("/api/v1/GreetService", v1greet)
 // enable service discovery (optional)
-chiRouter.Handle("/api/v1", ferry.ServiceDiscovery(router))
+chiRouter.Handle("/api/v1", ferry.ServiceDiscovery(chiRouter))
 // run your server
 http.ListenAndServe(":7777", chiRouter)
 ```
@@ -65,7 +65,8 @@ That's it. Because `ferry.Router` has `chi.Router` embedded you can use all the 
 
 ### Service Discovery
 
-`ferry`'s service discovery is meant to be read by humans first. It is formatted like this:
+`ferry`'s service discovery is meant to be read by humans first. Handler for service discovery is created by walking
+router's routing tree. If you enabled it, `/api/v1` response should like this:
 ```json
 [
   {

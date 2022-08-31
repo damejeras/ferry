@@ -25,11 +25,10 @@ func TestBuildMeta(t *testing.T) {
 			t.Errorf("unexpected error: %v", err)
 		}
 
-		expected := serviceMeta{
-			reflectedName: "github.com/damejeras/ferry.TestBuildMeta.func1.1",
-			methodName:    "1",
-			body:          make(map[string]string),
-			query:         make(map[string]string),
+		expected := meta{
+			name:  "1",
+			body:  make(map[string]string),
+			query: make(map[string]string),
 		}
 
 		if !reflect.DeepEqual(m, expected) {
@@ -43,11 +42,10 @@ func TestBuildMeta(t *testing.T) {
 			t.Errorf("unexpected error: %v", err)
 		}
 
-		expected = serviceMeta{
-			reflectedName: "github.com/damejeras/ferry.TestBuildMeta.func1.2",
-			methodName:    "2",
-			body:          make(map[string]string),
-			query:         make(map[string]string),
+		expected = meta{
+			name:  "2",
+			body:  make(map[string]string),
+			query: make(map[string]string),
 		}
 
 		if !reflect.DeepEqual(m, expected) {
@@ -62,11 +60,10 @@ func TestBuildMeta(t *testing.T) {
 			t.Errorf("unexpected error: %v", err)
 		}
 
-		expected := serviceMeta{
-			reflectedName: "github.com/damejeras/ferry.(*testMeta).TestProcedure-fm",
-			methodName:    "TestProcedure",
-			body:          make(map[string]string),
-			query:         make(map[string]string),
+		expected := meta{
+			name:  "TestProcedure",
+			body:  make(map[string]string),
+			query: make(map[string]string),
 		}
 
 		if !reflect.DeepEqual(m, expected) {
@@ -81,11 +78,10 @@ func TestBuildMeta(t *testing.T) {
 			t.Errorf("unexpected error: %v", err)
 		}
 
-		expected := serviceMeta{
-			reflectedName: "github.com/damejeras/ferry.testService.StreamOneEvent-fm",
-			methodName:    "StreamOneEvent",
-			body:          make(map[string]string),
-			query:         make(map[string]string),
+		expected := meta{
+			name:  "StreamOneEvent",
+			body:  make(map[string]string),
+			query: make(map[string]string),
 		}
 
 		if !reflect.DeepEqual(m, expected) {
@@ -99,11 +95,10 @@ func TestBuildMeta(t *testing.T) {
 			t.Errorf("unexpected error: %v", err)
 		}
 
-		expected := serviceMeta{
-			reflectedName: "github.com/damejeras/ferry.testProc",
-			methodName:    "testProc",
-			body:          make(map[string]string),
-			query:         make(map[string]string),
+		expected := meta{
+			name:  "testProc",
+			body:  make(map[string]string),
+			query: make(map[string]string),
 		}
 
 		if !reflect.DeepEqual(m, expected) {

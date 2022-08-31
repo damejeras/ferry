@@ -1,8 +1,6 @@
 package ferry
 
-type Option func(mux *mux)
-
-func WithErrorHandler(handler ErrorHandler) Option {
+func WithErrorHandler(handler ErrorHandler) func(*mux) {
 	return func(m *mux) {
 		m.errHandler = handler
 	}
